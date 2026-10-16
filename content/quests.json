@@ -1,6 +1,5 @@
 {
-  "_설명": "의뢰 데이터입니다. 의뢰를 추가하려면 quests 배열에 같은 모양으로 항목을 추가하세요. stat 은 str/dex/int/cha, difficulty 는 easy/normal/hard 입니다.",
-
+  "_설명": "의뢰 데이터입니다. 의뢰를 추가하려면 quests 배열에 같은 모양으로 항목을 추가하세요. stat 은 str/dex/int/cha, difficulty 는 easy/normal/hard 입니다. mode 는 solo(혼자) / party(방장이 모집, 기본 2~4명) / raid(관리자가 엶, 기본 최소 3명·최대 제한 없음). 인원은 minPlayers/maxPlayers 로 바꿀 수 있고, 적에 phase2 를 넣으면 HP 가 at 비율 아래로 떨어질 때 행동 패턴이 바뀝니다.",
   "quests": [
     {
       "id": "lost-cart",
@@ -8,54 +7,362 @@
       "mode": "solo",
       "recommendedLevel": 1,
       "summary": "마을 상인의 짐수레가 숲길에서 사라졌다. 별것 아닌 의뢰처럼 보이지만, 바퀴 자국이 이상하다.",
-      "reward": { "xp": 40, "gold": 60, "items": [{ "id": "herb", "qty": 2 }] },
+      "reward": {
+        "xp": 40,
+        "gold": 60,
+        "items": [
+          {
+            "id": "herb",
+            "qty": 2
+          }
+        ]
+      },
       "intro": "📜 의뢰: 사라진 짐수레\n마을 상인 올프의 짐수레가 숲길에서 사라졌다. 사례금은 적지만, 블랙리스트에 오른 용병단이 이름을 되찾을 첫 의뢰다.",
-
       "investigation": {
         "intro": "🔎 조사 단계 — 행동 3번 안에 단서를 모으자. 실패하면 경계도가 오르고, 경계도가 3이 되면 도적들이 먼저 덮친다.",
         "choices": [
           {
-            "id": "tracks", "label": "바퀴 자국을 따라간다", "stat": "int", "difficulty": "normal",
-            "success": { "text": "자국은 숲 안쪽 폐오두막으로 이어진다. 오두막 뒤편에 우회로가 보인다.",
-                         "effect": { "type": "enemy_ac", "value": -2, "label": "적 방어도 -2 (전투 내내)" } },
-            "fail": { "text": "발자국이 뒤엉켜 방향을 놓쳤다. 숲 어딘가에서 인기척이 느껴진다." }
+            "id": "tracks",
+            "label": "바퀴 자국을 따라간다",
+            "stat": "int",
+            "difficulty": "normal",
+            "success": {
+              "text": "자국은 숲 안쪽 폐오두막으로 이어진다. 오두막 뒤편에 우회로가 보인다.",
+              "effect": {
+                "type": "enemy_ac",
+                "value": -2,
+                "label": "적 방어도 -2 (전투 내내)"
+              }
+            },
+            "fail": {
+              "text": "발자국이 뒤엉켜 방향을 놓쳤다. 숲 어딘가에서 인기척이 느껴진다."
+            }
           },
           {
-            "id": "merchant", "label": "상인에게 다시 캐묻는다", "stat": "cha", "difficulty": "easy",
-            "success": { "text": "상인이 떨며 털어놓는다. 수레를 끈 건 도적 서넛, 두목은 왼팔을 다쳤다고.",
-                         "effect": { "type": "attack_bonus", "value": 1, "label": "명중 굴림 +1 (전투 내내)" } },
-            "fail": { "text": "상인이 말을 더듬으며 입을 다문다. 그의 눈이 숲 쪽을 힐끔 본다." }
+            "id": "merchant",
+            "label": "상인에게 다시 캐묻는다",
+            "stat": "cha",
+            "difficulty": "easy",
+            "success": {
+              "text": "상인이 떨며 털어놓는다. 수레를 끈 건 도적 서넛, 두목은 왼팔을 다쳤다고.",
+              "effect": {
+                "type": "attack_bonus",
+                "value": 1,
+                "label": "명중 굴림 +1 (전투 내내)"
+              }
+            },
+            "fail": {
+              "text": "상인이 말을 더듬으며 입을 다문다. 그의 눈이 숲 쪽을 힐끔 본다."
+            }
           },
           {
-            "id": "search", "label": "숲길 주변을 수색한다", "stat": "dex", "difficulty": "normal",
-            "success": { "text": "나뭇가지에 걸린 천 조각을 찾았다. 매복 지점을 먼저 파악했다.",
-                         "effect": { "type": "alert", "value": -1, "label": "경계도 -1" } },
-            "fail": { "text": "마른 가지가 발밑에서 부러진다. 숲이 갑자기 조용해졌다." }
+            "id": "search",
+            "label": "숲길 주변을 수색한다",
+            "stat": "dex",
+            "difficulty": "normal",
+            "success": {
+              "text": "나뭇가지에 걸린 천 조각을 찾았다. 매복 지점을 먼저 파악했다.",
+              "effect": {
+                "type": "alert",
+                "value": -1,
+                "label": "경계도 -1"
+              }
+            },
+            "fail": {
+              "text": "마른 가지가 발밑에서 부러진다. 숲이 갑자기 조용해졌다."
+            }
           },
           {
-            "id": "mark", "label": "수레 잔해의 문양을 살핀다", "stat": "int", "difficulty": "hard",
-            "success": { "text": "잔해에 검게 칠한 초승달 문양이 있다. 평범한 도적단의 표식이 아니다.",
-                         "clue": "black-moon", "clueLabel": "검은 초승달 문양" },
-            "fail": { "text": "문양이 진흙에 뭉개져 알아볼 수 없다." }
+            "id": "mark",
+            "label": "수레 잔해의 문양을 살핀다",
+            "stat": "int",
+            "difficulty": "hard",
+            "success": {
+              "text": "잔해에 검게 칠한 초승달 문양이 있다. 평범한 도적단의 표식이 아니다.",
+              "clue": "black-moon",
+              "clueLabel": "검은 초승달 문양"
+            },
+            "fail": {
+              "text": "문양이 진흙에 뭉개져 알아볼 수 없다."
+            }
           }
         ]
       },
-
       "combat": {
         "intro": "⚔ 숲 속 공터. 도적 두목이 짐수레를 뒤지다 고개를 든다.",
         "ambushText": "💥 기습! 경계를 들킨 탓에 도적 두목이 먼저 움직였다.",
         "enemies": [
           {
-            "id": "boss", "name": "도적 두목", "hp": 26, "ac": 12, "attackBonus": 4,
+            "id": "boss",
+            "name": "도적 두목",
+            "hp": 26,
+            "ac": 12,
+            "attackBonus": 4,
             "intents": [
-              { "type": "strike", "target": "lowest_hp", "dice": "d6", "bonus": 1, "label": "HP가 가장 낮은 자를 노린다" },
-              { "type": "strike", "target": "random", "dice": "d6", "bonus": 1, "label": "무작위로 한 명을 벤다" },
-              { "type": "guard", "label": "방어 태세를 취한다 (방어도 +3)" }
+              {
+                "type": "strike",
+                "target": "lowest_hp",
+                "dice": "d6",
+                "bonus": 1,
+                "label": "HP가 가장 낮은 자를 노린다"
+              },
+              {
+                "type": "strike",
+                "target": "random",
+                "dice": "d6",
+                "bonus": 1,
+                "label": "무작위로 한 명을 벤다"
+              },
+              {
+                "type": "guard",
+                "label": "방어 태세를 취한다 (방어도 +3)"
+              }
             ]
           }
         ],
         "victoryText": "도적 두목이 무릎을 꿇었다. 수레는 무사하다. 짐 틈에서 낯선 문양이 찍힌 서신 한 장이 나온다…",
         "defeatText": "시야가 흐려진다. 도적들의 웃음소리가 멀어진다…"
+      }
+    },
+    {
+      "id": "black-moon-warehouse",
+      "title": "검은 초승달의 창고",
+      "mode": "party",
+      "minPlayers": 2,
+      "maxPlayers": 4,
+      "recommendedLevel": 2,
+      "summary": "짐수레에서 나온 서신이 항구 창고를 가리킨다. 혼자 가기엔 위험하다. 동료를 모아 가자.",
+      "reward": {
+        "xp": 60,
+        "gold": 90,
+        "items": [
+          {
+            "id": "herb",
+            "qty": 2
+          }
+        ]
+      },
+      "intro": "📜 파티 의뢰: 검은 초승달의 창고\n서신에 적힌 항구 창고. 밤마다 초승달 문양이 찍힌 상자가 들어간다는 소문이 돈다.",
+      "investigation": {
+        "intro": "🔎 조사 단계 — 창고 주변을 살피자. 실패하면 경계도가 오르고, 3이 되면 경비들이 먼저 덮친다.",
+        "choices": [
+          {
+            "id": "guards",
+            "label": "경비 교대 시간을 엿본다",
+            "stat": "dex",
+            "difficulty": "normal",
+            "success": {
+              "text": "교대 직후, 문 앞이 잠깐 비는 틈을 찾았다.",
+              "effect": {
+                "type": "attack_bonus",
+                "value": 1,
+                "label": "명중 굴림 +1 (전투 내내)"
+              }
+            },
+            "fail": {
+              "text": "그림자 밖으로 발을 헛디뎠다. 경비 하나가 고개를 돌린다."
+            }
+          },
+          {
+            "id": "dockhand",
+            "label": "부두 일꾼에게 술을 산다",
+            "stat": "cha",
+            "difficulty": "easy",
+            "success": {
+              "text": "일꾼이 혀가 풀렸다. 창고 안 관리인은 갑옷 이음매가 약하다고.",
+              "effect": {
+                "type": "enemy_ac",
+                "value": -1,
+                "label": "적 방어도 -1 (전투 내내)"
+              }
+            },
+            "fail": {
+              "text": "일꾼이 술만 받아 마시고 수상하다는 눈으로 쳐다본다."
+            }
+          },
+          {
+            "id": "crates",
+            "label": "상자에 붙은 송장을 읽는다",
+            "stat": "int",
+            "difficulty": "hard",
+            "success": {
+              "text": "송장 수신인은 ‘달의 사제’. 상자는 북쪽 늪으로 옮겨질 예정이다.",
+              "clue": "moon-priest",
+              "clueLabel": "달의 사제와 북쪽 늪"
+            },
+            "fail": {
+              "text": "송장은 암호로 적혀 있다. 오래 들여다보는 사이 발소리가 가까워진다."
+            }
+          },
+          {
+            "id": "roof",
+            "label": "지붕으로 올라 내부를 내려다본다",
+            "stat": "str",
+            "difficulty": "normal",
+            "success": {
+              "text": "천장 틈으로 경비 배치를 모두 봤다.",
+              "effect": {
+                "type": "alert",
+                "value": -1,
+                "label": "경계도 -1"
+              }
+            },
+            "fail": {
+              "text": "낡은 기와가 한 장 떨어져 깨진다."
+            }
+          }
+        ]
+      },
+      "combat": {
+        "intro": "⚔ 창고 안. 초승달 문신을 한 관리인이 사슬을 풀어 쥔다.",
+        "ambushText": "💥 기습! 경비들이 먼저 사슬을 휘둘렀다.",
+        "enemies": [
+          {
+            "id": "keeper",
+            "name": "창고 관리인",
+            "hp": 30,
+            "ac": 13,
+            "attackBonus": 4,
+            "intents": [
+              {
+                "type": "strike",
+                "target": "highest_hp",
+                "dice": "d8",
+                "bonus": 1,
+                "label": "가장 튼튼한 자에게 사슬을 휘두른다"
+              },
+              {
+                "type": "strike",
+                "target": "random",
+                "dice": "d6",
+                "bonus": 1,
+                "label": "무작위로 한 명을 후려친다"
+              },
+              {
+                "type": "guard",
+                "label": "상자 뒤로 몸을 숨긴다 (방어도 +3)"
+              }
+            ]
+          },
+          {
+            "id": "thug",
+            "name": "부두 깡패",
+            "hp": 14,
+            "ac": 11,
+            "attackBonus": 3,
+            "intents": [
+              {
+                "type": "strike",
+                "target": "lowest_hp",
+                "dice": "d6",
+                "bonus": 0,
+                "label": "HP가 가장 낮은 자를 노린다"
+              }
+            ]
+          }
+        ],
+        "victoryText": "관리인이 쓰러지며 초승달 펜던트를 떨어뜨린다. 펜던트 뒷면에 늪지의 지도가 새겨져 있다…",
+        "defeatText": "사슬이 발목을 휘감는다. 창고 문이 닫히는 소리가 들린다…"
+      }
+    },
+    {
+      "id": "moon-serpent",
+      "title": "늪의 달뱀",
+      "mode": "raid",
+      "minPlayers": 3,
+      "recommendedLevel": 3,
+      "summary": "북쪽 늪에서 달의 사제가 거대한 뱀을 깨웠다. 용병단 전원이 나서야 한다. (관리자가 열면 참가)",
+      "reward": {
+        "xp": 120,
+        "gold": 200,
+        "items": [
+          {
+            "id": "herb",
+            "qty": 3
+          }
+        ]
+      },
+      "intro": "🐉 레이드: 늪의 달뱀\n안개 낀 늪 한가운데, 초승달 비늘을 두른 거대한 뱀이 몸을 일으킨다. 그 머리 위에 달의 사제가 서 있다.",
+      "combat": {
+        "intro": "⚔ 달뱀이 늪물을 가르며 다가온다. 땅이 흔들린다.",
+        "enemies": [
+          {
+            "id": "serpent",
+            "name": "달뱀",
+            "hp": 45,
+            "ac": 13,
+            "attackBonus": 5,
+            "intents": [
+              {
+                "type": "strike",
+                "target": "random",
+                "dice": "d8",
+                "bonus": 2,
+                "label": "꼬리로 한 명을 내리친다"
+              },
+              {
+                "type": "strike",
+                "target": "highest_hp",
+                "dice": "d10",
+                "bonus": 2,
+                "label": "가장 튼튼한 자를 물어뜯는다"
+              },
+              {
+                "type": "guard",
+                "label": "비늘을 세운다 (방어도 +3)"
+              }
+            ],
+            "phase2": {
+              "at": 0.5,
+              "text": "비늘이 검게 물들고 독기를 내뿜는다!",
+              "intents": [
+                {
+                  "type": "strike",
+                  "target": "all",
+                  "dice": "d4",
+                  "bonus": 1,
+                  "label": "독안개를 뿜는다 (전원)"
+                },
+                {
+                  "type": "strike",
+                  "target": "lowest_hp",
+                  "dice": "d10",
+                  "bonus": 3,
+                  "label": "약한 자를 집어삼키려 한다"
+                },
+                {
+                  "type": "strike",
+                  "target": "random",
+                  "dice": "d8",
+                  "bonus": 2,
+                  "label": "꼬리로 한 명을 내리친다"
+                }
+              ]
+            }
+          },
+          {
+            "id": "priest",
+            "name": "달의 사제",
+            "hp": 20,
+            "ac": 12,
+            "attackBonus": 4,
+            "intents": [
+              {
+                "type": "strike",
+                "target": "lowest_hp",
+                "dice": "d6",
+                "bonus": 1,
+                "label": "HP가 가장 낮은 자에게 저주를 건다"
+              },
+              {
+                "type": "guard",
+                "label": "뱀 뒤로 숨어 주문을 왼다 (방어도 +3)"
+              }
+            ]
+          }
+        ],
+        "victoryText": "달뱀이 늪 속으로 무너져 내린다. 사제의 손에서 떨어진 초승달 인장이 진흙 위에서 빛을 잃는다…",
+        "defeatText": "독안개가 시야를 덮는다. 누군가 이름을 부르는 소리가 멀어진다…"
       }
     }
   ]

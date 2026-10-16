@@ -15,12 +15,13 @@
 - 클래스는 첫 의뢰 시작 후 변경 불가.
 - **일반 대화는 트위터(X)식 타임라인으로 전면 교체** (채널/스레드는 화면에서 숨김). 조사·전투는 의뢰 방(실시간 채팅) 유지.
 
-## 3. 구현 현황 (1~4단계 + 타임라인, 전부 완료·테스트 통과)
+## 3. 구현 현황 (1~5단계 + 타임라인, 전부 완료·테스트 통과)
 1. 가입/로그인/프로필/이미지/관리자
 2. 채널·스레드(레거시, 백엔드만 남음)
 3. 의뢰: 조사 → 전투(d20 엔진), 응원, 타이머, 보상(xp/gold/items), 레벨업·스탯 분배
 4. 마을 장터: 채집(체력), 제작, 도박항아리, 판매, 장비(전투 반영), 선물
 5. 타임라인: 글/답글/리포스트·인용/하트/멘션/해시태그/알림/신고, 공식 계정 소식(#의뢰 #장터)
+6. 파티·레이드(5단계): 의뢰 단위 파티(상시 파티 없음). 파티 2~4명 방장 모집 → 출발. 레이드는 관리자가 엶, 최소 3명·최대 제한 없음, 보스 2페이즈, 같은 레이드 주 1회 전액 보상. 보상 각자 전액, KO 는 경험치 절반, 부활 없음. 적 HP 인원 비례(1인당 +60%). 응원은 구경꾼·쓰러진 사람만. 모집 중도 "진행 중"으로 쳐서 동시 1개. (README 5단계 참고)
 
 ## 4. 기술 스택·구조
 Node 22, Express 4, Socket.IO 4, better-sqlite3 ^11.5 (Node 24 프리빌드 없음 → Node 22 LTS 사용), multer, sharp, scrypt, HttpOnly 쿠키 세션, CSP `script-src 'self'`(인라인 스크립트 금지), Origin 검사, 레이트리밋.
@@ -29,13 +30,13 @@ Node 22, Express 4, Socket.IO 4, better-sqlite3 ^11.5 (Node 24 프리빌드 없�
 |---|---|
 | server.js | API 본체, 소켓, 인증, 캐릭터/프로필, 관리자 |
 | feed.js | 타임라인(글·알림·태그·멘션·관리자 API) |
-| runs.js | 의뢰 진행(조사/전투/응원/타이머/보상), GET /api/runs |
+| runs.js | 의뢰 진행(모집/조사/전투/응원/타이머/보상, 파티·레이드), GET /api/runs |
 | town.js / economy.js | 장터 / 경제 순수 규칙 |
 | engine.js | d20 판정 엔진(순수 함수) |
 | db.js | 스키마·자동 마이그레이션 |
 | content/*.json | rules / quests / economy (기획자가 수정, 시작 시 검증·한국어 에러) |
 | public/index.html, app.js, style.css, admin.* | 프런트 (app.js 는 단일 IIFE, DOM 은 h() 로만 생성 → XSS 방지) |
-| test/*.js | engine 17, economy 11, smoke 104, feed 56, quest 59, town 55 |
+| test/*.js | engine 23, economy 11, smoke 104, feed 56, quest 59, town 55, party 60 |
 
 프런트 구조: 뷰 `home | quests | room | town | notif` (+ 모바일 탭 profile/people). `setView()/setTab()`, 타임라인은 `state.feed`, 상세는 `state.detail`, 의뢰 방은 `state.roomId`.
 
@@ -50,7 +51,7 @@ PORT, DATA_DIR, ADMIN_USERNAME/PASSWORD, QUESTS_FILE, ECONOMY_FILE, RNG_SEED, RO
 - Python 치환 스크립트로 파일 패치 시 앵커 문자열 정확히 확인.
 
 ## 7. 다음 후보 (미착수, 우선순위는 사용자와 상의)
-- 파티·레이드(멀티 의뢰), 주간 이벤트/신용 챕터(4주 스토리) 연동, DM
+- 주간 이벤트/신용 챕터(4주 스토리) 연동(레이드 보상에 신용 연결), DM
 - 레거시 채널·스레드 코드 정리 여부
 - 호스팅 이전(영구 디스크, DATA_DIR)
 

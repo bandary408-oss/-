@@ -95,4 +95,55 @@ t('같은 시드면 결과가 같다', () => {
   const go = () => { let st = state('도적'); const rng = E.mulberry32(5); const out = []; for (let i = 0; i < 4; i++) { const r = E.resolveRound({ rules, state: st, actions: { 1: { action: 'attack' } }, rng }); st = r.state; out.push(r.summary); if (r.outcome !== 'continue') break; } return out.join('|'); };
   assert.strictEqual(go(), go());
 });
+
+console.log('파티·레이드');
+t('인원 제한: 솔로 1, 파티 기본 2~4, 레이드 최소 3·최대 없음', () => {
+  assert.deepStrictEqual(E.partySize({ mode: 'solo' }), { min: 1, max: 1 });
+  assert.deepStrictEqual(E.partySize({ mode: 'party' }), { min: 2, max: 4 });
+  assert.deepStrictEqual(E.partySize({ mode: 'raid' }), { min: 3, max: null });
+  assert.deepStrictEqual(E.partySize({ mode: 'party', minPlayers: 3, maxPlayers: 3 }), { min: 3, max: 3 });
+});
+t('적 HP 는 인원수에 비례', () => {
+  assert.strictEqual(E.scaledHp(rules, 10, 1), 10);
+  assert.strictEqual(E.scaledHp(rules, 10, 2), Math.round(10 * (1 + rules.party.hpScalePerPlayer)));
+  const q = JSON.parse(JSON.stringify(quests[0]));
+  const s = E.makeCombatState({ quest: q, players: [mk('전사'), mk('도적', { userId: 2 }), mk('성직자', { userId: 3 })], rules });
+  assert.strictEqual(s.enemies[0].maxHp, E.scaledHp(rules, 26, 3));
+});
+t('잘못된 mode·인원·phase2 는 한국어 오류', () => {
+  const bad = JSON.parse(JSON.stringify(quests)); bad[0].mode = 'duo';
+  assert.throws(() => E.validateContent(rules, { quests: bad }), /mode 는 solo\/party\/raid/);
+  const bad2 = JSON.parse(JSON.stringify(quests)); bad2[0].mode = 'party'; bad2[0].minPlayers = 3; bad2[0].maxPlayers = 2;
+  assert.throws(() => E.validateContent(rules, { quests: bad2 }), /maxPlayers/);
+  const bad3 = JSON.parse(JSON.stringify(quests)); bad3[0].combat.enemies[0].phase2 = { at: 2, intents: [] };
+  assert.throws(() => E.validateContent(rules, { quests: bad3 }), /phase2/);
+});
+t('보스 2페이즈: HP 가 기준 아래로 떨어지면 다음 라운드부터 패턴 변경', () => {
+  const q = JSON.parse(JSON.stringify(quests[0]));
+  q.combat.enemies[0].intents = [{ type: 'guard', label: '평온' }];
+  q.combat.enemies[0].phase2 = { at: 0.5, text: '분노!', intents: [{ type: 'guard', label: '분노한 자세' }] };
+  const s = E.makeCombatState({ quest: q, players: [mk('전사')] });
+  s.enemies[0].hp = 14; // 26 의 절반 이상
+  // 전사 공격: d20=19 명중(가드 +3 포함), d8=8 +3 = 11 → HP 3 (절반 아래)
+  const r = E.resolveRound({ rules, state: s, actions: { 1: { action: 'attack' } }, rng: fixed(dieAt(19, 20), dieAt(8, 8)) });
+  assert.strictEqual(r.state.enemies[0].hp, 3);
+  assert.ok(r.state.enemies[0].phase2.on);
+  assert.strictEqual(E.intentFor(r.state.enemies[0], r.state.round).label, '분노한 자세');
+  assert.ok(/2페이즈! 분노!/.test(r.summary) && /분노한 자세/.test(r.summary), r.summary);
+});
+t('앞사람이 마지막 적을 쓰러뜨리면 뒷사람 행동은 생략되고 승리', () => {
+  const q = JSON.parse(JSON.stringify(quests[0]));
+  q.combat.enemies[0].hp = 1;
+  const s = E.makeCombatState({ quest: q, players: [mk('전사'), mk('도적', { userId: 2, name: '나' })] });
+  const r = E.resolveRound({ rules, state: s, actions: { 1: { action: 'attack' }, 2: { action: 'attack' } }, rng: fixed(dieAt(19, 20), dieAt(5, 8)) });
+  assert.strictEqual(r.outcome, 'victory');
+});
+t('전원 대상 공격(all)은 살아 있는 모두를 노림', () => {
+  const q = JSON.parse(JSON.stringify(quests[0]));
+  q.combat.enemies[0].intents = [{ type: 'strike', target: 'all', dice: 'd4', bonus: 0, label: '독안개' }];
+  const s = E.makeCombatState({ quest: q, players: [mk('전사'), mk('도적', { userId: 2, name: '나' })] });
+  const r = E.resolveRound({ rules, state: s, actions: {}, ambush: true, rng: fixed(dieAt(20, 20), dieAt(2, 4)) });
+  assert.ok(r.state.players.every((p) => p.hp < p.maxHp));
+});
+
 console.log(`\n${pass} 개 통과`);

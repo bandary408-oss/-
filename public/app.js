@@ -970,8 +970,9 @@
   }
 
   // ---------- 의뢰 게시판 / 의뢰 패널 ----------
-  const PHASE_ICON = { investigation: '🔎', combat: '⚔', won: '✅', lost: '☠', abandoned: '🏳' };
-  const PHASE_LABEL = { investigation: '조사 중', combat: '전투 중', won: '완료', lost: '실패', abandoned: '포기' };
+  const PHASE_ICON = { recruiting: '🧭', investigation: '🔎', combat: '⚔', won: '✅', lost: '☠', abandoned: '🏳', cancelled: '🏳' };
+  const PHASE_LABEL = { recruiting: '모집 중', investigation: '조사 중', combat: '전투 중', won: '완료', lost: '실패', abandoned: '포기', cancelled: '모집 취소' };
+  const sizeText = (min, max) => (max === null ? `${min}명 이상` : min === max ? `${min}명` : `${min}~${max}명`);
 
   async function renderQuestBoard() {
     const boxEl = $('#questBoard');
@@ -985,10 +986,12 @@
       }
       quests.forEach((q) => boxEl.append(h('div', { class: 'quest-card' },
         h('div', { class: 'q-main' },
-          h('div', { class: 'q-title' }, q.title),
-          h('div', { class: 'q-meta' }, `권장 Lv.${q.recommendedLevel} · 보상 경험치 ${q.rewardXp}${q.clears ? ` · 클리어 ${q.clears}회` : ''}`),
+          h('div', { class: 'q-title' }, q.mode !== 'solo' ? h('span', { class: 'mode-tag ' + q.mode }, q.modeLabel) : null, q.mode !== 'solo' ? ' ' : null, q.title),
+          h('div', { class: 'q-meta' }, `${q.mode !== 'solo' ? sizeText(q.minPlayers, q.maxPlayers) + ' · ' : ''}권장 Lv.${q.recommendedLevel} · 보상 경험치 ${q.rewardXp}${q.clears ? ` · 클리어 ${q.clears}회` : ''}`),
           h('div', { class: 'muted' }, q.summary)),
-        h('button', { class: 'btn primary small', type: 'button', disabled: !!active, onclick: () => startQuest(q.id) }, '수락'))));
+        q.mode === 'raid'
+          ? h('span', { class: 'muted small-note' }, '관리자가 열면 아래 목록에서 참가')
+          : h('button', { class: 'btn primary small', type: 'button', disabled: !!active, onclick: () => startQuest(q.id) }, q.mode === 'party' ? '파티 모집' : '수락'))));
     } catch (e) { toast(e.message, true); }
   }
   async function loadRunList() {
@@ -998,13 +1001,22 @@
       if (state.view !== 'quests') return;
       el.textContent = '';
       if (!runs.length) return;
-      el.append(h('h3', {}, '👀 진행 중 · 최근 의뢰'));
-      runs.forEach((r) => el.append(h('div', { class: 'quest-card' },
+      el.append(h('h3', {}, '👀 모집 · 진행 중 · 최근 의뢰'));
+      runs.forEach((r) => el.append(h('div', { class: 'quest-card' + (r.phase === 'recruiting' ? ' recruiting' : '') },
         h('div', { class: 'q-main' },
-          h('div', { class: 'q-title' }, `${PHASE_ICON[r.phase] || ''} ${r.title}`),
-          h('div', { class: 'q-meta' }, `${r.owner} · ${PHASE_LABEL[r.phase] || r.phase}${r.round ? ` · ${r.round}라운드` : ''} · ${relTime(r.createdAt)}`)),
+          h('div', { class: 'q-title' }, `${PHASE_ICON[r.phase] || ''} `, r.mode !== 'solo' ? h('span', { class: 'mode-tag ' + r.mode }, r.modeLabel) : null, r.mode !== 'solo' ? ' ' : null, r.title),
+          h('div', { class: 'q-meta' }, `${r.owner} · ${PHASE_LABEL[r.phase] || r.phase}`
+            + `${r.mode !== 'solo' ? ` · ${r.players}${r.maxPlayers ? `/${r.maxPlayers}` : ''}명` : ''}${r.round ? ` · ${r.round}라운드` : ''} · ${relTime(r.createdAt)}`)),
+        r.phase === 'recruiting' && !r.mine ? h('button', { class: 'btn small primary', type: 'button', onclick: () => joinRun(r) }, '참가') : null,
         h('button', { class: 'btn small', type: 'button', onclick: () => openRoom(r.threadId, r.id) }, '들어가기'))));
     } catch { /* 무시 */ }
+  }
+
+  async function joinRun(r) {
+    try {
+      await api(`/api/runs/${r.id}/join`, { method: 'POST' });
+      await openRoom(r.threadId, r.id);
+    } catch (e) { toast(e.message, true); }
   }
 
   async function startQuest(id) {
@@ -1049,7 +1061,7 @@
     if (!r) { el.hidden = true; return; }
     el.textContent = '';
     el.append(h('div', { class: 'run-head' },
-      h('h3', {}, `${PHASE_ICON[r.phase] || ''} ${r.title}`),
+      h('h3', {}, `${PHASE_ICON[r.phase] || ''} `, r.mode !== 'solo' ? h('span', { class: 'mode-tag ' + r.mode }, r.modeLabel) : null, r.mode !== 'solo' ? ' ' : null, r.title),
       h('span', { class: 'phase-tag ' + r.phase }, PHASE_LABEL[r.phase] || r.phase),
       h('button', { class: 'btn small ghost', type: 'button', id: 'runFold', onclick: () => { state.runCollapsed = !state.runCollapsed; renderRun(); } },
         state.runCollapsed ? '펼치기 ▾' : '접기 ▴')));
@@ -1063,35 +1075,70 @@
       return;
     }
 
-    if (r.phase === 'investigation') renderInvestigation(el, r);
+    if (r.phase === 'recruiting') renderRecruit(el, r);
+    else if (r.phase === 'investigation') renderInvestigation(el, r);
     else if (r.combat) renderCombat(el, r);
     if (!r.active) {
-      const msg = { won: '🏆 의뢰를 완료했어요. 이 방은 뒤풀이 수다방으로 계속 쓸 수 있어요.', lost: '☠ 의뢰에 실패했어요. 다시 도전할 수 있어요.', abandoned: '🏳 포기한 의뢰예요.' }[r.phase];
+      const msg = { won: '🏆 의뢰를 완료했어요. 이 방은 뒤풀이 수다방으로 계속 쓸 수 있어요.', lost: '☠ 의뢰에 실패했어요. 다시 도전할 수 있어요.', abandoned: '🏳 포기한 의뢰예요.', cancelled: '🏳 모집이 취소됐어요.' }[r.phase];
       if (msg) el.append(h('div', { class: 'run-banner' }, msg));
       if (r.myStatus === 'ko') el.append(h('div', { class: 'run-line' }, '전투불능 상태라 이 방에서는 발언할 수 없어요. 의뢰 목록에서 다시 시작해보세요.'));
     }
     el.hidden = false;
   }
 
+  // 방장(레이드는 관리자)인가
+  const canLead = (r) => r.isOwner || (r.mode === 'raid' && state.me.isAdmin);
+  const canPlay = (r) => r.isPlayer && r.myStatus === 'active';
+
+  // 모집 중 (파티·레이드)
+  function renderRecruit(el, r) {
+    const rc = r.recruiting;
+    el.append(h('div', { class: 'run-line' }, `🧭 참가자 ${rc.count}${r.maxPlayers ? `/${r.maxPlayers}` : ''}명 · 최소 ${r.minPlayers}명${r.maxPlayers ? '' : ' · 인원 제한 없음'}`));
+    r.members.forEach((m) => el.append(h('div', { class: 'run-unit' },
+      h('span', {}, `🧑 ${m.name} (${m.cls} Lv.${m.level})${m.userId === r.ownerId ? ' 👑' : ''}`),
+      canLead(r) && m.userId !== r.ownerId
+        ? h('button', { class: 'btn small ghost danger', type: 'button', onclick: () => { if (window.confirm(`${m.name} 을(를) 파티에서 내보낼까요?`)) runCall('kick', { userId: m.userId }); } }, '내보내기')
+        : h('span', {}, ''))));
+    const btns = [];
+    if (rc.canJoin) btns.push(h('button', { class: 'btn primary', type: 'button', onclick: () => runCall('join', null, '참가했어요!') }, '🙋 참가'));
+    else if (!r.isPlayer && rc.joinBlock) el.append(h('div', { class: 'run-line' }, rc.joinBlock));
+    if (canLead(r)) {
+      btns.push(h('button', { class: 'btn primary', type: 'button', disabled: !rc.canDepart, title: rc.canDepart ? '' : `최소 ${r.minPlayers}명이 필요해요`, onclick: () => runCall('depart') }, '🚩 출발'));
+      btns.push(h('button', { class: 'btn small ghost danger', type: 'button', onclick: () => { if (window.confirm('모집을 취소할까요?')) runCall('abandon'); } }, '모집 취소'));
+    } else if (r.isPlayer) {
+      btns.push(h('button', { class: 'btn small ghost', type: 'button', onclick: () => runCall('leave') }, '나가기'));
+    }
+    if (btns.length) el.append(h('div', { class: 'run-actions' }, btns));
+    el.append(h('div', { class: 'run-line' }, r.mode === 'raid' ? '인원이 모이면 관리자가 출발시켜요. 채팅으로 작전을 짜 보세요!' : '인원이 모이면 방장이 출발해요. 채팅으로 인사를 나눠 보세요!'));
+  }
+
   function renderInvestigation(el, r) {
     const inv = r.investigation;
     const alerts = '●'.repeat(Math.min(inv.alert, inv.alertLimit)) + '○'.repeat(Math.max(0, inv.alertLimit - inv.alert));
     el.append(h('div', { class: 'run-line' }, `🔎 조사 행동 ${inv.actionsLeft}/${inv.maxActions}회 남음 · 경계도 ${alerts}`));
-    if (r.isOwner) {
+    if (canPlay(r)) {
       el.append(h('div', { class: 'run-choices' }, inv.choices.map((c) => h('button', {
         type: 'button', class: 'btn run-choice' + (c.done ? ' done' : ''), disabled: c.done,
         onclick: () => runCall('investigate', { choiceId: c.id, line: lineInput.value }),
       }, h('span', {}, (c.done ? '✓ ' : '') + c.label), h('small', {}, `${c.statName} ${c.bonus >= 0 ? '+' : ''}${c.bonus} · ${c.diffLabel}`)))));
       el.append(lineInput);
       el.append(h('div', { class: 'run-actions' },
-        h('button', { class: 'btn small', type: 'button', onclick: () => runCall('advance') }, '조사를 마치고 전투로'),
-        h('button', { class: 'btn small ghost danger', type: 'button', onclick: () => confirmAbandon() }, '포기')));
+        r.isOwner || r.mode === 'raid' ? h('button', { class: 'btn small', type: 'button', onclick: () => runCall('advance') }, '조사를 마치고 전투로') : null,
+        quitButton(r)));
+    } else if (canLead(r)) {
+      el.append(h('div', { class: 'run-actions' }, h('button', { class: 'btn small', type: 'button', onclick: () => runCall('advance') }, '조사를 마치고 전투로'), quitButton(r)));
     } else {
       el.append(h('div', { class: 'run-line' }, '조사를 지켜보는 중이에요. 아래 채팅으로 함께 떠들어보세요!'));
     }
   }
 
   function confirmAbandon() { if (window.confirm('의뢰를 포기할까요? 보상은 없어요.')) runCall('abandon'); }
+  // 방장은 '포기'(의뢰 전체 종료), 다른 참가자는 '이탈'(나만 빠짐)
+  function quitButton(r) {
+    if (r.isOwner) return h('button', { class: 'btn small ghost danger', type: 'button', onclick: () => confirmAbandon() }, r.mode === 'raid' ? '레이드 중단' : '포기');
+    if (!canPlay(r)) return null;
+    return h('button', { class: 'btn small ghost danger', type: 'button', onclick: () => { if (window.confirm('대열에서 이탈할까요? 보상은 없어요.')) runCall('leave'); } }, '이탈');
+  }
 
   function renderCombat(el, r) {
     const cb = r.combat;
@@ -1102,16 +1149,19 @@
       hpBar(e.hp, e.maxHp, true),
       e.intent && live ? h('div', { class: 'intent', style: 'grid-column:1/-1' }, `👁 다음 행동: ${e.intent}`) : null)));
     cb.players.forEach((p) => {
-      const canCheer = live && p.userId !== state.me.id && p.status === 'active';
-      el.append(h('div', { class: 'run-unit' + (p.status === 'ko' ? ' ko' : '') },
-        h('span', {}, `🧑 ${p.name} (${p.cls})${p.status === 'ko' ? ' 💀' : ''}${p.submitted ? ' ✔' : ''}${p.cheers ? ` 📣${p.cheers}` : ''}${p.cd > 0 ? ` · 쿨 ${p.cd}` : ''}`),
+      const canCheer = live && p.userId !== state.me.id && p.status === 'active' && !(cb.me && cb.me.status === 'active');
+      el.append(h('div', { class: 'run-unit' + (p.status !== 'active' ? ' ko' : '') },
+        h('span', {}, `🧑 ${p.name} (${p.cls})${p.status === 'ko' ? ' 💀' : ''}${p.status === 'left' ? ' 🏃' : ''}${p.submitted ? ' ✔' : ''}${p.cheers ? ` 📣${p.cheers}` : ''}${p.cd > 0 ? ` · 쿨 ${p.cd}` : ''}`),
         h('span', {}, `HP ${p.hp}/${p.maxHp}`, canCheer ? ' ' : null,
           canCheer ? h('button', { class: 'btn cheer-btn', type: 'button', disabled: cb.myCheer !== null || p.cheers >= cb.cheerMax,
             title: cb.myCheer !== null ? '이번 라운드엔 이미 응원했어요' : '이번 라운드 명중·위력 +1', onclick: () => runCall('cheer', { targetUserId: p.userId }) }, '📣 응원') : null),
         hpBar(p.hp, p.maxHp, false)));
     });
-    if (live && r.isOwner && cb.me && cb.me.status === 'active') renderActions(el, r);
-    else if (live && !r.isOwner) el.append(h('div', { class: 'run-line' }, '구경 중 — 채팅으로 떠들고, 📣 응원으로 힘을 보태세요.'));
+    if (live && r.isPlayer && cb.me && cb.me.status === 'active') renderActions(el, r);
+    else if (live) {
+      el.append(h('div', { class: 'run-line' }, '구경 중 — 채팅으로 떠들고, 📣 응원으로 힘을 보태세요.'));
+      if (canLead(r)) el.append(h('div', { class: 'run-actions' }, quitButton(r)));
+    }
     tickRun();
   }
 
@@ -1144,8 +1194,7 @@
         h('span', { class: 'run-line' }, `선택: ${label[pending.action]} — 다른 행동을 눌러 바꿀 수 있어요.`),
         h('button', { class: 'btn small primary', type: 'button', onclick: () => act(pending.action, true) }, '⏩ 지금 진행')));
     }
-    el.append(h('div', { class: 'run-actions' },
-      h('button', { class: 'btn small ghost danger', type: 'button', onclick: () => confirmAbandon() }, '포기')));
+    el.append(h('div', { class: 'run-actions' }, quitButton(r)));
   }
 
   // 남은 시간 표시 (서버 시계 기준으로 보정)

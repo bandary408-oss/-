@@ -55,6 +55,7 @@
       else if (current === 'threads') await renderThreads(view);
       else if (current === 'posts') await renderPosts(view);
       else if (current === 'reports') await renderReports(view);
+      else if (current === 'raids') await renderRaids(view);
       else await renderInvites(view);
     } catch (e) { view.textContent = ''; view.append(h('p', { class: 'error' }, e.message)); }
     refreshReportCount();
@@ -210,6 +211,25 @@
   }
 
   // ----- 초대코드 -----
+  // 레이드: 관리자가 열면 타임라인에 공지가 올라가고, 유저는 의뢰 게시판에서 참가. 출발은 의뢰 방에서.
+  async function renderRaids(view) {
+    const { raids } = await api('/api/admin/raids');
+    view.textContent = '';
+    if (!raids.length) { view.append(h('p', { class: 'muted' }, 'content/quests.json 에 mode 가 "raid" 인 의뢰가 없어요.')); return; }
+    raids.forEach((r) => view.append(h('div', { class: 'card' },
+      h('div', { style: 'font-weight:600' }, `🐉 ${r.title}`),
+      h('div', { class: 'muted', style: 'margin:4px 0 8px' }, `${r.summary} · 최소 ${r.minPlayers}명`),
+      r.open
+        ? h('div', { class: 'btn-row', style: 'align-items:center' }, h('span', {}, `열려 있음 (${{ recruiting: '모집 중', investigation: '조사 중', combat: '전투 중' }[r.open.phase] || r.open.phase})`),
+          h('a', { class: 'btn small', href: '/' }, '게임 → 의뢰 → 목록에서 들어가기 → 출발'))
+        : h('button', { class: 'btn primary small', type: 'button', onclick: act(async () => {
+          if (!window.confirm(`「${r.title}」 레이드를 열까요? 타임라인에 공지가 올라가요.`)) return;
+          await api(`/api/admin/raids/${r.id}/open`, { method: 'POST' });
+          toast('레이드를 열었어요.');
+          render();
+        }) }, '레이드 열기'))));
+  }
+
   async function renderInvites(view) {
     const { invites } = await api('/api/admin/invites');
     view.textContent = '';

@@ -687,6 +687,21 @@ admin.post('/channels', (req, res) => {
   res.json({ ok: true, id: Number(info.lastInsertRowid) });
 });
 feed.registerAdmin(admin);
+// 레이드 열기 (5단계): 레이드 의뢰 목록과 지금 열려 있는지
+admin.get('/raids', (req, res) => {
+  const open = Object.fromEntries(db.prepare(`SELECT r.quest_id, r.id, r.thread_id, r.phase FROM runs r JOIN threads t ON t.id = r.thread_id AND t.deleted = 0
+    WHERE r.phase IN ('recruiting','investigation','combat')`).all().map((x) => [x.quest_id, x]));
+  res.json({ raids: QUESTS.filter((q) => q.mode === 'raid').map((q) => ({
+    id: q.id, title: q.title, summary: q.summary, minPlayers: E.partySize(q).min,
+    open: open[q.id] ? { runId: open[q.id].id, threadId: open[q.id].thread_id, phase: open[q.id].phase } : null,
+  })) });
+});
+admin.post('/raids/:questId/open', (req, res) => {
+  const out = runs.openRaid(req.user.id, req.params.questId);
+  if (out.status !== 200) return res.status(out.status).json({ error: out.error, runId: out.runId });
+  res.json({ ok: true, runId: out.runId, threadId: out.threadId });
+});
+
 app.use('/api/admin', admin);
 
 // 정적 파일 (프론트)
