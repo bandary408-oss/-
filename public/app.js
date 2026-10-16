@@ -77,7 +77,7 @@
     view: 'home', tab: 'home', unread: 0,
     feed: { posts: [], hasMore: false, tag: '', pending: 0 }, detail: null, replyTarget: null,
     roomId: null, oldestId: null, lastMsgId: 0, viewing: null,
-    game: null, run: null, runCollapsed: false, inv: null, townTab: 'farm', townResult: '', gift: null, runUi: { ally: '', enemy: '' }, skew: 0, lastRunFetch: 0,
+    game: null, run: null, runCollapsed: false, inv: null, townTab: 'daily', daily: null, jar: null, achievements: null, townResult: '', gift: null, runUi: { ally: '', enemy: '' }, skew: 0, lastRunFetch: 0,
   };
 
   // ---------- 화면 전환 ----------
@@ -133,7 +133,7 @@
     document.body.dataset.tab = state.tab;
     document.querySelectorAll('.tabbar button').forEach((b) => b.classList.toggle('active', b.dataset.tab === state.tab));
     if (v === 'quests') { renderQuestBoard(); loadRunList(); }
-    else if (v === 'town') { loadInv(); }
+    else if (v === 'town') { loadInv(); loadDaily(); state.jar = null; }
     else if (v === 'notif') loadNotifs();
     else if (v === 'home') { refreshTrends(); if (state.feed.pending && !state.detail) loadFeed(true); }
   }
@@ -215,7 +215,7 @@
         h('button', { type: 'button', onclick: () => { showProfile(c.id); setTab('profile'); } },
           avatar(c.image, c.name, 'sm'),
           h('div', {},
-            h('div', { class: 'r-name' }, c.name),
+            h('div', { class: 'r-name' }, c.name, c.badge ? h('span', { class: 'badge-title' }, c.badge) : null),
             h('div', { class: 'r-sub' }, [c.class, c.title].filter(Boolean).join(' · ') || ' ')),
           h('span', { style: 'margin-left:auto', class: 'dot' }))));
     }
@@ -267,6 +267,7 @@
     const isRepost = p.quote && !p.body && !p.deleted;
     const head = h('div', { class: 'p-head' },
       h('button', { type: 'button', class: 'who', onclick: (e) => { e.stopPropagation(); showProfile(p.user.charId); setTab('profile'); } }, p.user.name),
+      p.user.badge ? h('span', { class: 'badge-title' }, p.user.badge) : null,
       p.isSystem ? h('span', { class: 'official' }, '공식') : (p.user.class ? h('span', { class: 'p-class' }, p.user.class) : null),
       h('time', { title: fmtDateTime(p.createdAt) }, relTime(p.createdAt)));
     const main = h('div', { class: 'p-main' }, head);
@@ -534,8 +535,8 @@
   }
 
   // --- 알림 ---
-  const NOTIF_TEXT = { reply: '님이 답글을 남겼어요', mention: '님이 나를 언급했어요', like: '님이 ♥를 눌렀어요', repost: '님이 내 글을 리포스트했어요', gift: '님이 선물을 보냈어요' };
-  const NOTIF_ICON = { reply: '💬', mention: '＠', like: '♥', repost: '🔁', gift: '🎁' };
+  const NOTIF_TEXT = { reply: '님이 답글을 남겼어요', mention: '님이 나를 언급했어요', like: '님이 ♥를 눌렀어요', repost: '님이 내 글을 리포스트했어요', gift: '님이 선물을 보냈어요', achievement: '업적 달성' };
+  const NOTIF_ICON = { reply: '💬', mention: '＠', like: '♥', repost: '🔁', gift: '🎁', achievement: '🏅' };
   async function loadNotifs() {
     try {
       const { items } = await api('/api/notifications');
@@ -547,7 +548,8 @@
         onclick: () => { if (n.postId) openDetail(n.postId); },
       }, h('div', { class: 'n-ico' }, NOTIF_ICON[n.type] || '🔔'),
         h('div', {},
-          h('div', {}, h('b', {}, n.actor || '누군가'), NOTIF_TEXT[n.type] || '', n.text ? ` — ${n.text}` : ''),
+          n.type === 'achievement' ? h('div', {}, h('b', {}, '🏅 업적 달성! '), n.text, ' — 프로필에서 칭호로 달 수 있어요')
+            : h('div', {}, h('b', {}, n.actor || '누군가'), NOTIF_TEXT[n.type] || '', n.text ? ` — ${n.text}` : ''),
           n.snippet ? h('div', { class: 'n-snip' }, n.snippet) : null,
           h('time', { class: 'muted' }, relTime(n.createdAt))))));
       if (items.some((n) => !n.read)) {
@@ -795,6 +797,20 @@
       toast(`🎁 ${from} 님이 선물을 보냈어요: ${what}${message ? ` — “${message}”` : ''}`);
       loadInv();
     });
+    // 잼컨: 업적 · 도박항아리 흔들기
+    socket.on('achievement', ({ name, gold }) => {
+      toast(`🏅 업적 달성! 칭호 「${name}」${gold ? ` (+${gold}G)` : ''}`);
+      state.achievements = null;
+      if (!state.viewing) renderAchBox();
+      loadInv();
+    });
+    socket.on('jar:shaking', (x) => {
+      if (state.jar) { state.jar.shaking = state.jar.shaking.filter((y) => y.id !== x.id).concat([{ ...x, until: Date.now() + x.revealInMs }]); renderJarLive(); }
+    });
+    socket.on('jar:done', ({ id }) => {
+      if (state.jar) { state.jar.shaking = state.jar.shaking.filter((y) => y.id !== id); renderJarLive(); }
+    });
+    socket.on('jar:result', () => { if (state.jar && state.jar.mine.pending) loadJarState(); });
     socket.on('run:ko', ({ threadId }) => {
       toast('💀 전투불능! 잠시 뒤 의뢰 목록으로 돌아갑니다.', true);
       setTimeout(() => { if (state.roomId === threadId && state.view === 'room') setView('quests'); }, 2500);
@@ -847,13 +863,14 @@
         h('div', { class: 'head' },
           avatar(c.image, c.name, 'lg'),
           h('div', {},
-            h('div', { class: 'pname' }, c.name),
+            h('div', { class: 'pname' }, c.name, c.badge ? h('span', { class: 'badge-title' }, c.badge) : null),
             c.title ? h('div', { class: 'ptitle' }, c.title) : null,
             c.class ? h('span', { class: 'badge' }, c.class) : null,
             h('div', { class: 'muted' }, c.online ? '● 접속 중' : '○ 오프라인'),
             c.link ? profileLink(c.link) : null)),
         sheetView(c, false),
         equipmentView(c),
+        otherAchievements(c.id),
         section('외형', c.appearance),
         section('설정', c.bio),
         profilePosts(c.id, c.name),
@@ -942,10 +959,53 @@
         h('button', { class: 'btn small ghost mobile-only', type: 'button', style: 'margin-left:auto', onclick: () => setTab('people') }, '👥 다른 단원 보기')),
       h('div', { id: 'sheetBox', style: 'padding:10px 14px 0' }),
       h('div', { id: 'invBox', style: 'padding:10px 14px 0' }),
+      h('div', { id: 'achBox', style: 'padding:10px 14px 0' }),
       form,
       profilePosts(c.id, c.name));
     renderSheetBox();
     renderInvBox();
+    renderAchBox();
+  }
+
+  // ---------- 업적·칭호 ----------
+  function otherAchievements(charId) {
+    const wrap = h('div', {}, h('div', { class: 'section-title' }, '🏅 업적'));
+    api(`/api/characters/${charId}/achievements`).then(({ achievements, total }) => {
+      wrap.firstChild.textContent = `🏅 업적 ${achievements.length} / ${total}`;
+      if (!achievements.length) wrap.append(h('div', { class: 'muted' }, '아직 달성한 업적이 없어요.'));
+      else wrap.append(h('div', { class: 'ach-chips' }, achievements.map((a) => h('span', { class: 'ach-chip', title: a.desc }, a.name))));
+    }).catch(() => {});
+    return wrap;
+  }
+  async function renderAchBox() {
+    const box = $('#achBox');
+    if (!box) return;
+    if (!state.achievements) {
+      try { state.achievements = await api('/api/achievements'); } catch { return; }
+    }
+    const d = state.achievements;
+    const earned = d.achievements.filter((a) => a.earned);
+    const sel = h('select', { 'aria-label': '칭호' }, h('option', { value: '' }, '(칭호 안 달기)'),
+      earned.map((a) => h('option', { value: a.id, selected: a.id === d.badge }, a.name)));
+    sel.addEventListener('change', async () => {
+      try {
+        await api('/api/character/badge', { method: 'POST', body: { id: sel.value } });
+        d.badge = sel.value;
+        const me = await api('/api/me'); state.character = me.character;
+        toast(sel.value ? '칭호를 달았어요.' : '칭호를 뗐어요.');
+        loadRoster();
+      } catch (e) { toast(e.message, true); }
+    });
+    const open = !!state.achOpen;
+    const list = d.achievements.map((a) => h('div', { class: 'ach-row' + (a.earned ? ' done' : '') },
+      h('div', { class: 'ach-name' }, a.earned ? '🏅 ' : '▫ ', a.name, a.gold ? h('small', {}, ` +${a.gold}G`) : null),
+      h('div', { class: 'muted' }, a.desc, ` · ${a.progress} / ${a.goal}`, a.holders ? ` · ${a.holders}명 달성` : ''),
+      h('div', { class: 'bar' }, h('i', { style: `width:${Math.round((a.progress / a.goal) * 100)}%` }))));
+    box.replaceChildren(h('div', { class: 'inv-box' },
+      h('div', { class: 'inv-head' }, h('span', {}, `🏅 업적 ${earned.length} / ${d.achievements.length}`),
+        h('button', { class: 'btn small ghost', type: 'button', onclick: () => { state.achOpen = !open; renderAchBox(); } }, open ? '접기' : '전체 보기')),
+      h('label', {}, '칭호 ', sel, h('small', {}, ' 이름 옆에 붙어요. 업적을 달성하면 칭호가 생겨요.')),
+      open ? list : null));
   }
 
   // ---------- 능력치 ----------
@@ -1275,6 +1335,7 @@
         d.desc ? h('small', {}, d.desc) : null,
         h('div', { class: 'row' },
           d.type === 'equipment' ? h('button', { class: 'btn', type: 'button', onclick: () => econ('/api/equip', { itemId: row.id }) }, '장착') : null,
+          d.type === 'consumable' ? h('button', { class: 'btn primary', type: 'button', onclick: () => useItem(row.id) }, '사용') : null,
           h('button', { class: 'btn', type: 'button', onclick: () => econ('/api/sell', { itemId: row.id, qty: 1 }) }, '1개 판매'),
           row.qty > 1 ? h('button', { class: 'btn', type: 'button', onclick: () => econ('/api/sell', { itemId: row.id, all: true }) }, '전부 판매') : null,
           h('button', { class: 'btn', type: 'button', onclick: () => { state.gift = { itemId: row.id }; renderInvBox(); } }, '🎁 선물'))));
@@ -1282,6 +1343,11 @@
     kids.push(h('div', { class: 'row' }, h('button', { class: 'btn small', type: 'button', onclick: () => { state.gift = { itemId: null }; renderInvBox(); } }, '🎁 골드 선물'),
       h('button', { class: 'btn small ghost', type: 'button', onclick: showGiftLog }, '선물 기록')));
     box.replaceChildren(h('div', { class: 'inv-box' }, kids));
+  }
+
+  async function useItem(id) {
+    const r = await econ('/api/use', { itemId: id });
+    if (r) { state.townResult = `🧪 ${itemDef(id).name}을(를) 사용했다. 체력 +${r.used.stamina}`; renderTown(); toast(state.townResult); }
   }
 
   function giftForm() {
@@ -1317,7 +1383,7 @@
   }
 
   // ----- 마을 장터 패널 -----
-  const TOWN_TABS = [['farm', '🧺 채집'], ['craft', '🔨 제작'], ['jar', '🏺 도박항아리'], ['shop', '💰 상점']];
+  const TOWN_TABS = [['daily', '🔮 운세'], ['farm', '🧺 채집'], ['craft', '🔨 제작'], ['jar', '🏺 도박항아리'], ['shop', '💰 상점']];
   function renderTown() {
     const el = $('#townPanel');
     if (!el || state.view !== 'town' || !state.inv || !state.game) return;
@@ -1325,9 +1391,10 @@
     el.textContent = '';
     el.append(h('div', { class: 'town-head' }, h('h3', {}, '🏘 마을 장터'), h('span', { class: 'pill gold' }, `💰 ${inv.gold}G`), h('span', { class: 'pill' }, stamText(inv))));
     el.append(h('div', { class: 'town-tabs' }, TOWN_TABS.map(([k, label]) => h('button', {
-      type: 'button', class: 'btn small' + (k === tab ? ' active' : ''), onclick: () => { state.townTab = k; renderTown(); } }, label))));
+      type: 'button', class: 'btn small' + (k === tab ? ' active' : ''), onclick: () => { state.townTab = k; state.townResult = ''; renderTown(); } },
+      label, k === 'daily' && state.daily && !state.daily.today ? h('span', { class: 'new-dot' }, ' ●') : null))));
     if (state.townResult) el.append(h('div', { class: 'town-result' }, state.townResult));
-    if (tab === 'farm') townFarm(el); else if (tab === 'craft') townCraft(el); else if (tab === 'jar') townJar(el); else townShop(el);
+    if (tab === 'daily') townDaily(el); else if (tab === 'farm') townFarm(el); else if (tab === 'craft') townCraft(el); else if (tab === 'jar') townJar(el); else townShop(el);
   }
   const dropNames = (ids) => ids.map((id) => itemDef(id).name).join(', ');
 
@@ -1340,7 +1407,7 @@
         const r = await econ('/api/farm', { spotId: s.id });
         if (!r) return;
         const x = r.result;
-        state.townResult = x.nothing ? `🍂 ${s.name}: ${x.text}` : `🧺 ${s.name}: ${itemDef(x.item).name}${x.qty > 1 ? ` ×${x.qty}` : ''} 획득! (${rarityLabel(x.item)})`;
+        state.townResult = x.nothing ? `🍂 ${s.name}: ${x.text}` : `🧺 ${s.name}: ${itemDef(x.item).name}${x.qty > 1 ? ` ×${x.qty}` : ''} 획득! (${rarityLabel(x.item)})${x.lucky ? ' 🍀 운세 덕분에 2배!' : ''}`;
         renderTown();
       } }, '채집'))));
   }
@@ -1367,19 +1434,107 @@
     });
   }
 
+  // ----- 오늘의 운세 -----
+  async function loadDaily() {
+    try { state.daily = await api('/api/daily'); renderTown(); } catch { /* 무시 (다음에 탭을 열 때 다시 시도) */ }
+  }
+  function townDaily(el) {
+    const d = state.daily;
+    if (!d) { el.append(h('div', { class: 'muted' }, '불러오는 중…')); return; }
+    const t = d.today;
+    if (!t) {
+      el.append(h('div', { class: 'fortune-card' },
+        h('div', { class: 'f-big' }, '🔮'),
+        h('div', {}, '점술사가 수정구슬을 닦으며 당신을 기다린다.'),
+        h('div', { class: 'muted' }, d.streak ? `🔥 ${d.streak}일 연속 출석 중! 오늘도 뽑으면 ${d.streak + 1}일째` : '하루 한 번 운세를 뽑고 골드와 오늘 하루 효과를 받아요.'),
+        h('button', { class: 'btn primary', type: 'button', onclick: async (e) => {
+          e.target.disabled = true;
+          try {
+            const r = await api('/api/daily', { method: 'POST' });
+            state.daily = r; state.inv = r.inv; renderInvBox();
+            renderTown();
+          } catch (err) { toast(err.message, true); e.target.disabled = false; }
+        } }, '운세 뽑기')));
+      return;
+    }
+    const fx = [];
+    if (t.craftBonus) fx.push(`제작 판정 ${t.craftBonus > 0 ? '+' : ''}${t.craftBonus}`);
+    if (t.farmDouble) fx.push(`채집 ${t.farmDouble}% 확률로 2배`);
+    el.append(h('div', { class: 'fortune-card f-' + t.fortune },
+      h('div', { class: 'f-name' }, `【${t.name}】`),
+      h('div', { class: 'f-text' }, `“${t.text}”`),
+      t.lucky ? h('div', { class: 'muted' }, `오늘의 행운의 물건: ${t.lucky}`) : null,
+      h('div', {}, `💰 ${t.totalGold}G${t.streakGold ? ` (연속 보너스 ${t.streakGold}G 포함)` : ''}`,
+        t.stamina ? ` · 체력 +${t.stamina}` : '', t.streakItemName ? ` · 🎁 ${t.streakItemName}` : ''),
+      h('div', {}, fx.length ? `✨ 오늘 하루: ${fx.join(', ')}` : '오늘은 특별한 효과가 없어요.'),
+      h('div', { class: 'muted' }, `🔥 ${t.streak}일 연속 · 내일 다시 오세요!`)));
+  }
+
+  // ----- 도박항아리 (쿨타임 + 흔들기) -----
+  async function loadJarState() {
+    try {
+      const st = await api('/api/jar/state');
+      const at = Date.now();
+      st.shaking.forEach((x) => { x.until = at + x.revealInMs; });
+      if (st.mine.pending) st.mine.pending.until = at + st.mine.pending.revealInMs;
+      st.cooldownUntil = at + st.cooldownLeftSec * 1000;
+      const wasPending = state.jar && state.jar.mine.pending;
+      state.jar = st;
+      if (wasPending && st.mine.last && st.mine.last.id === wasPending.id) {
+        const x = st.mine.last;
+        state.townResult = x.gold !== undefined ? `🏺 ${x.jarName}: 골드 ${x.gold}G!` : `🏺 ${x.jarName}: ${itemDef(x.item).name}${x.qty > 1 ? ` ×${x.qty}` : ''}! (${rarityLabel(x.item)})`;
+        loadInv();
+      }
+      renderTown();
+    } catch { /* 무시 */ }
+  }
+  const secLeft = (until) => Math.max(0, Math.ceil((until - Date.now()) / 1000));
+  const fmtSec = (s) => (s >= 60 ? `${Math.floor(s / 60)}분 ${s % 60}초` : `${s}초`);
+  function renderJarLive() {
+    const box = $('#jarLive');
+    if (!box || !state.jar) return;
+    const myId = state.me.id;
+    const others = state.jar.shaking.filter((x) => x.userId !== myId && secLeft(x.until) > 0);
+    box.replaceChildren(...others.map((x) => h('div', { class: 'jar-other' }, h('span', { class: 'shake-ico' }, '🏺'), ` ${x.name}이(가) ${x.jarName}을(를) 흔들고 있습니다… `, h('small', { class: 'muted' }, `${secLeft(x.until)}초`))));
+  }
   function townJar(el) {
-    el.append(h('div', { class: 'muted' }, '골드를 내고 항아리를 깨요. 본전은 보통 못 건지지만, 가끔 대박이 터집니다. 희귀 이상은 모두에게 공지돼요.'));
+    const S = ECO().settings;
+    el.append(h('div', { class: 'muted' }, `골드를 내고 항아리를 흔들어 깨요. 한 번 깨면 ${fmtSec(S.jarCooldownSec)} 동안 쉬어야 해요. 희귀 이상은 모두에게 공지돼요.`));
+    el.append(h('div', { id: 'jarLive' }));
+    const st = state.jar;
+    if (!st) { loadJarState(); return; }
+    renderJarLive();
+    const p = st.mine.pending;
+    if (p && secLeft(p.until) > 0) {
+      const jar = ECO().jars.find((j) => j.id === p.jarId);
+      el.append(h('div', { class: 'jar-shaking' }, h('div', { class: 'shake-ico big' }, '🏺'),
+        h('div', {}, `${state.character.name}이(가) ${jar ? jar.name : '항아리'}을(를) 흔들고 있습니다…`),
+        h('div', { class: 'muted' }, `${secLeft(p.until)}초`)));
+      return;
+    }
+    if (p) { loadJarState(); return; } // 흔들기 끝 → 결과 받아오기
+    const cd = secLeft(st.cooldownUntil || 0);
+    if (cd > 0) el.append(h('div', { class: 'town-result' }, `⏳ 다음 항아리까지 ${fmtSec(cd)}`));
     ECO().jars.forEach((j) => el.append(h('div', { class: 'town-row' },
       h('div', { class: 't-main' }, h('div', { class: 't-title' }, j.name), h('div', { class: 't-meta' }, j.desc),
         h('div', { class: 't-meta' }, `나올 수 있는 것: ${j.hasGold ? '골드, ' : ''}${dropNames(j.prizes)}`)),
-      h('button', { class: 'btn primary small', type: 'button', disabled: state.inv.gold < j.price, onclick: async () => {
+      h('button', { class: 'btn primary small', type: 'button', disabled: state.inv.gold < j.price || cd > 0, onclick: async () => {
         const r = await econ('/api/jar', { jarId: j.id });
         if (!r) return;
-        const x = r.result;
-        state.townResult = x.gold !== undefined ? `🏺 ${j.name}: 골드 ${x.gold}G!` : `🏺 ${j.name}: ${itemDef(x.item).name}${x.qty > 1 ? ` ×${x.qty}` : ''}! (${rarityLabel(x.item)})`;
-        renderTown();
+        state.townResult = '';
+        if (r.result) { // 흔들기 시간이 0 이면 바로 결과
+          const x = r.result;
+          state.townResult = x.gold !== undefined ? `🏺 ${j.name}: 골드 ${x.gold}G!` : `🏺 ${j.name}: ${itemDef(x.item).name}${x.qty > 1 ? ` ×${x.qty}` : ''}! (${rarityLabel(x.item)})`;
+        }
+        loadJarState();
       } }, `깨기 ${j.price}G`))));
   }
+  // 흔드는 중/쿨타임 숫자를 1초마다 갱신
+  setInterval(() => {
+    if ($('#game').hidden || state.view !== 'town' || state.townTab !== 'jar' || !state.jar) return;
+    const p = state.jar.mine.pending;
+    if (p || secLeft(state.jar.cooldownUntil || 0) > 0 || state.jar.shaking.length) renderTown();
+  }, 1000);
 
   function townShop(el) {
     const junk = state.inv.items.filter((x) => itemDef(x.id).type === 'junk');

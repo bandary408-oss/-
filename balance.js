@@ -28,9 +28,13 @@ const KEY_LABELS = {
   drops: '나오는 것', recipes: '제작', inputs: '재료', jars: '도박항아리', price: '가격', prizes: '상품',
   party: '파티·레이드', hpScalePerPlayer: '1명 늘 때 적 HP 증가 비율', koXpRatio: '전투불능 시 경험치 비율',
   minPlayers: '최소 인원', maxPlayers: '최대 인원', phase2: '2페이즈', at: '시작 HP 비율',
+  jarCooldownSec: '항아리 쿨타임(초)', jarShakeSec: '항아리 흔드는 시간(초)', use: '사용 효과', stamina: '체력 회복',
+  daily: '오늘의 운세', utcOffsetHours: '날짜 기준 시차(시간, 한국 9)', streakGold: '연속 출석 1일당 보너스 골드',
+  streakCap: '연속 보너스 최대 일수', streakItemEvery: '연속 출석 아이템 주기(일)', fortunes: '운세',
+  craftBonus: '제작 판정 보너스', farmDouble: '채집 2배 확률(%)', achievements: '업적', goal: '목표 횟수',
 };
 // 이 값들은 0(또는 1) 미만으로 내릴 수 없어요
-const MIN_BY_KEY = { hp: 1, maxActions: 1, alertLimit: 1, max: 1, price: 1, critMultiplier: 1 };
+const MIN_BY_KEY = { hp: 1, maxActions: 1, alertLimit: 1, max: 1, price: 1, critMultiplier: 1, goal: 1 };
 
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 const clone = (o) => JSON.parse(JSON.stringify(o));

@@ -296,6 +296,45 @@ CREATE TABLE IF NOT EXISTS post_reports (
 );
 `);
 
+// ---- 6단계(잼컨): 오늘의 운세, 업적·칭호, 항아리 흔들기 ----
+addColumn('characters', 'badge', "TEXT NOT NULL DEFAULT ''");   // 달고 있는 칭호(업적 id)
+db.exec(`
+CREATE TABLE IF NOT EXISTS daily_draws (
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day         TEXT NOT NULL,          -- YYYY-MM-DD (daily.utcOffsetHours 기준)
+  fortune_id  TEXT NOT NULL,
+  streak      INTEGER NOT NULL,
+  result      TEXT NOT NULL,          -- 화면용 결과 JSON
+  created_at  INTEGER NOT NULL,
+  PRIMARY KEY (user_id, day)
+);
+CREATE TABLE IF NOT EXISTS user_counters (
+  user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  key      TEXT NOT NULL,
+  n        INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, key)
+);
+CREATE TABLE IF NOT EXISTS user_achievements (
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  ach_id      TEXT NOT NULL,
+  created_at  INTEGER NOT NULL,
+  PRIMARY KEY (user_id, ach_id)
+);
+-- 항아리: 흔드는 동안(reveal_at 전)은 결과를 숨겨 두었다가 시간이 되면 지급
+CREATE TABLE IF NOT EXISTS jar_pulls (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  jar_id      TEXT NOT NULL,
+  price       INTEGER NOT NULL,
+  result      TEXT NOT NULL,
+  started_at  INTEGER NOT NULL,
+  reveal_at   INTEGER NOT NULL,
+  settled     INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_jar_user ON jar_pulls(user_id, id);
+CREATE INDEX IF NOT EXISTS idx_jar_pending ON jar_pulls(settled, reveal_at);
+`);
+
 // 시스템 메시지를 올리는 보이지 않는 계정 (로그인 불가, 명단·관리자 목록에서 제외)
 let sys = db.prepare('SELECT id FROM users WHERE is_system = 1').get();
 if (!sys) {

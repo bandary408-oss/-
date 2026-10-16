@@ -8,12 +8,14 @@ const PAGE = 30;
 
 function createFeed(ctx) {
   const { db, auth, now, cleanText, blockReason, io, emitToUser, systemUserId, maxLen } = ctx;
+  const track = (uid, key) => { if (ctx.track) ctx.track(uid, key); };
+  const badgeName = (id) => (ctx.badgeName ? ctx.badgeName(id) : '');
 
-  const postSelect = `SELECT p.*, c.name AS char_name, c.image AS char_image, c.id AS char_id, c.class AS char_class
+  const postSelect = `SELECT p.*, c.name AS char_name, c.image AS char_image, c.id AS char_id, c.class AS char_class, c.badge AS char_badge
     FROM posts p JOIN characters c ON c.user_id = p.user_id`;
   const getPost = (id) => db.prepare('SELECT * FROM posts WHERE id = ?').get(Number(id));
   const img = (f) => (f ? `/uploads/${f}` : '');
-  const userView = (r) => ({ id: r.user_id, charId: r.char_id, name: r.char_name, image: img(r.char_image), class: r.char_class || '' });
+  const userView = (r) => ({ id: r.user_id, charId: r.char_id, name: r.char_name, image: img(r.char_image), class: r.char_class || '', badge: badgeName(r.char_badge) });
 
   // 글 목록을 화면용으로 (하트 여부, 인용 글, 답글 대상 이름을 한꺼번에 채움)
   function views(rows, viewerId) {
@@ -122,6 +124,7 @@ function createFeed(ctx) {
     const block = blockReason(req.user, true);
     if (block) return fail(res, block);
     const id = insertPost({ userId: req.user.id, body, kind, parent, quote });
+    track(req.user.id, 'post');
     res.json({ ok: true, post: viewOne(id, req.user.id) });
   });
 
@@ -147,7 +150,12 @@ function createFeed(ctx) {
       else db.prepare('INSERT INTO post_likes (post_id, user_id) VALUES (?, ?)').run(p.id, req.user.id);
       db.prepare('UPDATE posts SET like_count = (SELECT COUNT(*) FROM post_likes WHERE post_id = ?) WHERE id = ?').run(p.id, p.id);
     })();
-    if (!had) notify(p.user_id, 'like', { actorId: req.user.id, postId: p.id });
+    if (!had) {
+      // 하트를 껐다 켜도 한 사람당 한 번만 업적에 셈 (하트 알림이 처음 생길 때만)
+      const first = p.user_id !== req.user.id && !db.prepare("SELECT 1 FROM notifications WHERE type = 'like' AND user_id = ? AND post_id = ? AND actor_id = ?").get(p.user_id, p.id, req.user.id);
+      notify(p.user_id, 'like', { actorId: req.user.id, postId: p.id });
+      if (first) track(p.user_id, 'like_received');
+    }
     const likeCount = getPost(p.id).like_count;
     io().emit('post:update', { id: p.id, likeCount });
     res.json({ ok: true, liked: !had, likeCount });

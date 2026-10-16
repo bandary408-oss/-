@@ -1,5 +1,5 @@
 'use strict';
-// 마을 장터: 채집(파밍) · 제작 · 도박항아리 · 판매 · 장비 · 선물. 모든 변경은 트랜잭션 안에서 처리합니다.
+// 마을 장터: 채집(파밍) · 제작 · 도박항아리 · 판매 · 장비 · 소모품 · 선물. 모든 변경은 트랜잭션 안에서 처리합니다.
 const express = require('express');
 const E = require('./engine');
 const X = require('./economy');
@@ -7,6 +7,8 @@ const X = require('./economy');
 function createTown(ctx) {
   const { db, eco, rules, auth, now, rng, say, emitToUser, cleanText, townChannelId } = ctx;
   const S = eco.settings;
+  // 업적 기록·운세 효과 (fun.js). 테스트 등에서 없으면 아무 일도 안 함
+  const fun = () => (ctx.fun && ctx.fun()) || { track() {}, trackMax() {}, setCounter() {}, getCounter: () => 0, buffOf: () => ({ craftBonus: 0, farmDouble: 0 }) };
   const itemName = (id) => (eco.items[id] ? eco.items[id].name : id);
   const rarityName = (id) => eco.rarities[eco.items[id].rarity];
 
@@ -65,7 +67,7 @@ function createTown(ctx) {
   const fail = (res, msg, code = 400) => res.status(code).json({ error: msg });
   const posInt = (v, max = 100000) => (Number.isInteger(v) && v >= 1 && v <= max ? v : null);
 
-  r.get('/inventory', auth, (req, res) => res.json({ inv: invView(req.user.id) }));
+  r.get('/inventory', auth, (req, res) => { settleJars(req.user.id); res.json({ inv: invView(req.user.id) }); });
 
   r.post('/farm', auth, limit, (req, res) => {
     const spot = eco.spots.find((s) => s.id === (req.body || {}).spotId);
@@ -78,11 +80,18 @@ function createTown(ctx) {
       if (st.cur < spot.cost) return `체력이 부족해요. (다음 회복까지 약 ${Math.ceil(st.nextInSec / 60)}분)`;
       db.prepare('UPDATE characters SET stamina = ?, stamina_at = ? WHERE user_id = ?').run(st.cur - spot.cost, st.since, req.user.id);
       result = X.rollSpot(rng, spot);
+      // 오늘의 운세 효과: farmDouble% 확률로 수량 2배
+      const buff = fun().buffOf(req.user.id);
+      if (!result.nothing && buff.farmDouble && rng() * 100 < buff.farmDouble) { result.qty *= 2; result.lucky = true; }
       if (!result.nothing) addItem(req.user.id, result.item, result.qty);
       return null;
     })();
     if (err) return fail(res, err);
     if (!result.nothing && worthAnnouncing(result.item)) announce(`✨ ${c.name}이(가) ${spot.name}에서 ${rarityName(result.item)} ${itemName(result.item)}${result.qty > 1 ? ` ×${result.qty}` : ''}을(를) 발견했다!`);
+    const F = fun();
+    F.track(req.user.id, 'farm'); F.track(req.user.id, 'farm_' + spot.id);
+    if (result.nothing) F.track(req.user.id, 'farm_nothing');
+    else if (X.rarityAtLeast(eco.items[result.item].rarity, 'rare')) F.track(req.user.id, 'farm_rare');
     res.json({ ok: true, result, inv: invView(req.user.id) });
   });
 
@@ -95,7 +104,7 @@ function createTown(ctx) {
       const me = charOf(req.user.id);
       if (me.gold < rc.gold) { err = '골드가 부족해요.'; return; }
       for (const [id, n] of Object.entries(rc.inputs)) if (haveQty(req.user.id, id) < n) { err = `재료가 부족해요. (${itemName(id)})`; return; }
-      const bonus = E.sheet(rules, me).stats[rc.stat];
+      const bonus = E.sheet(rules, me).stats[rc.stat] + fun().buffOf(req.user.id).craftBonus;
       const roll = X.rollCraft(rng, rc, bonus);
       addGold(req.user.id, -rc.gold);
       let qty = 0;
@@ -109,26 +118,111 @@ function createTown(ctx) {
       out = { roll, qty, lostHalf: roll.fumble };
     })();
     if (err) return fail(res, err);
+    if (out.roll.success) fun().track(req.user.id, 'craft_success');
+    if (out.roll.crit) fun().track(req.user.id, 'craft_crit');
+    if (out.roll.fumble) fun().track(req.user.id, 'craft_fumble');
     if (out.qty && worthAnnouncing(rc.output)) announce(`🔨 ${c.name}이(가) ${itemName(rc.output)}${out.roll.crit ? ' ×2 (대성공!)' : ''}을(를) 만들어냈다!`);
     res.json({ ok: true, result: { ...out, output: rc.output, stat: rc.stat }, inv: invView(req.user.id) });
   });
 
+  // ----- 도박항아리: 쿨타임(jarCooldownSec) + 흔드는 시간(jarShakeSec) 뒤에 결과 공개 -----
+  // 굴림은 깨는 순간 정해지지만, 흔드는 동안은 결과를 숨겼다가 시간이 되면 지급해요 (창을 닫아도 지급됨)
+  const jarView = (row) => {
+    const jar = eco.jars.find((x) => x.id === row.jar_id);
+    return { id: row.id, jarId: row.jar_id, jarName: jar ? jar.name : row.jar_id, price: row.price, ...JSON.parse(row.result) };
+  };
+  function settleJars(uid) {
+    const rows = uid
+      ? db.prepare('SELECT * FROM jar_pulls WHERE settled = 0 AND reveal_at <= ? AND user_id = ?').all(now(), uid)
+      : db.prepare('SELECT * FROM jar_pulls WHERE settled = 0 AND reveal_at <= ?').all(now());
+    for (const row of rows) {
+      const result = JSON.parse(row.result);
+      const ok = db.transaction(() => {
+        if (!db.prepare('UPDATE jar_pulls SET settled = 1 WHERE id = ? AND settled = 0').run(row.id).changes) return false;
+        if (result.gold !== undefined) addGold(row.user_id, result.gold);
+        else if (eco.items[result.item]) addItem(row.user_id, result.item, result.qty);
+        return true;
+      })();
+      if (!ok) continue;
+      const c = charOf(row.user_id);
+      const v = jarView(row);
+      if (result.gold !== undefined) { if (result.gold >= row.price * 3) announce(`💰 ${c.name}이(가) ${v.jarName}에서 ${result.gold}G 대박을 터뜨렸다!`); }
+      else if (eco.items[result.item] && worthAnnouncing(result.item)) announce(`🏺 ${c.name}이(가) ${v.jarName}에서 ${rarityName(result.item)} ${itemName(result.item)}을(를) 깨냈다!`);
+      // 업적: 횟수, 대박, 연속 손해(판매가 기준으로 가격보다 적게 건짐)
+      const F = fun();
+      const worth = result.gold !== undefined ? result.gold : (eco.items[result.item] ? eco.items[result.item].value * result.qty : 0);
+      F.track(row.user_id, 'jar');
+      if (result.gold !== undefined && result.gold >= row.price * 3) F.track(row.user_id, 'jar_jackpot');
+      if (worth < row.price) { const cur = F.getCounter(row.user_id, 'jar_bust_cur') + 1; F.setCounter(row.user_id, 'jar_bust_cur', cur); F.trackMax(row.user_id, 'jar_bust_streak', cur); }
+      else F.setCounter(row.user_id, 'jar_bust_cur', 0);
+      emitToUser(row.user_id, 'jar:result', v);
+      if (ctx.broadcast) ctx.broadcast('jar:done', { id: row.id });
+    }
+  }
+  function jarState(uid) {
+    settleJars(uid);
+    const t = now();
+    const shaking = db.prepare(`SELECT j.id, j.user_id, j.jar_id, j.reveal_at, c.name FROM jar_pulls j JOIN characters c ON c.user_id = j.user_id
+      WHERE j.settled = 0 ORDER BY j.id`).all().map((x) => ({ id: x.id, userId: x.user_id, name: x.name,
+      jarName: (eco.jars.find((j) => j.id === x.jar_id) || { name: x.jar_id }).name, revealInMs: Math.max(0, x.reveal_at - t) }));
+    const last = db.prepare('SELECT * FROM jar_pulls WHERE user_id = ? ORDER BY id DESC LIMIT 1').get(uid);
+    const cd = last ? Math.max(0, Math.ceil((last.started_at + S.jarCooldownSec * 1000 - t) / 1000)) : 0;
+    return { shaking, mine: last ? (last.settled ? { last: jarView(last) } : { pending: { id: last.id, jarId: last.jar_id, revealInMs: Math.max(0, last.reveal_at - t) } }) : {},
+      cooldownLeftSec: cd, cooldownSec: S.jarCooldownSec, shakeSec: S.jarShakeSec };
+  }
+  const fmtLeft = (sec) => (sec >= 60 ? `${Math.floor(sec / 60)}분 ${sec % 60}초` : `${sec}초`);
+
+  r.get('/jar/state', auth, (req, res) => res.json(jarState(req.user.id)));
+
   r.post('/jar', auth, limit, (req, res) => {
     const jar = eco.jars.find((x) => x.id === (req.body || {}).jarId);
     if (!jar) return fail(res, '없는 항아리예요.');
-    const c = charOf(req.user.id);
-    let result = null, err = null;
+    const uid = req.user.id;
+    settleJars(uid);
+    let pull = null, err = null;
     db.transaction(() => {
-      if (charOf(req.user.id).gold < jar.price) { err = '골드가 부족해요.'; return; }
-      addGold(req.user.id, -jar.price);
-      result = X.rollJar(rng, jar);
-      if (result.gold !== undefined) addGold(req.user.id, result.gold);
-      else addItem(req.user.id, result.item, result.qty);
+      const t = now();
+      const last = db.prepare('SELECT * FROM jar_pulls WHERE user_id = ? ORDER BY id DESC LIMIT 1').get(uid);
+      if (last && !last.settled) { err = '이미 항아리를 흔들고 있어요!'; return; }
+      if (last && S.jarCooldownSec > 0 && t - last.started_at < S.jarCooldownSec * 1000) {
+        err = `항아리는 ${fmtLeft(S.jarCooldownSec)}에 한 번만 깰 수 있어요. (${fmtLeft(Math.ceil((last.started_at + S.jarCooldownSec * 1000 - t) / 1000))} 남음)`; return;
+      }
+      if (charOf(uid).gold < jar.price) { err = '골드가 부족해요.'; return; }
+      addGold(uid, -jar.price);
+      const result = X.rollJar(rng, jar);
+      const id = Number(db.prepare('INSERT INTO jar_pulls (user_id, jar_id, price, result, started_at, reveal_at) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(uid, jar.id, jar.price, JSON.stringify(result), t, t + S.jarShakeSec * 1000).lastInsertRowid);
+      pull = { id, revealInMs: S.jarShakeSec * 1000 };
     })();
     if (err) return fail(res, err);
-    if (result.gold !== undefined) { if (result.gold >= jar.price * 3) announce(`💰 ${c.name}이(가) ${jar.name}에서 ${result.gold}G 대박을 터뜨렸다!`); }
-    else if (worthAnnouncing(result.item)) announce(`🏺 ${c.name}이(가) ${jar.name}에서 ${rarityName(result.item)} ${itemName(result.item)}을(를) 깨냈다!`);
-    res.json({ ok: true, result, inv: invView(req.user.id) });
+    if (S.jarShakeSec <= 0) { // 흔들기 없음: 바로 결과
+      settleJars(uid);
+      const row = db.prepare('SELECT * FROM jar_pulls WHERE id = ?').get(pull.id);
+      const v = jarView(row);
+      return res.json({ ok: true, result: v.gold !== undefined ? { gold: v.gold } : { item: v.item, qty: v.qty }, inv: invView(uid) });
+    }
+    const c = charOf(uid);
+    if (ctx.broadcast) ctx.broadcast('jar:shaking', { id: pull.id, userId: uid, name: c.name, jarName: jar.name, revealInMs: pull.revealInMs });
+    res.json({ ok: true, pending: { id: pull.id, jarId: jar.id, revealInMs: pull.revealInMs }, inv: invView(uid) });
+  });
+
+  // 소모품 사용 (지금은 체력 회복만)
+  r.post('/use', auth, limit, (req, res) => {
+    const id = (req.body || {}).itemId;
+    const it = eco.items[id];
+    if (!it || it.type !== 'consumable') return fail(res, '사용할 수 없는 아이템이에요.');
+    let gained = 0, err = null;
+    db.transaction(() => {
+      const st = X.staminaNow(eco, charOf(req.user.id), now());
+      if (st.cur >= st.max) { err = '체력이 이미 가득해요.'; return; }
+      if (!removeItem(req.user.id, id, 1)) { err = '가지고 있지 않아요.'; return; }
+      const to = Math.min(st.max, st.cur + it.use.stamina);
+      gained = to - st.cur;
+      db.prepare('UPDATE characters SET stamina = ?, stamina_at = ? WHERE user_id = ?').run(to, st.since, req.user.id);
+    })();
+    if (err) return fail(res, err);
+    fun().track(req.user.id, 'use_item');
+    res.json({ ok: true, used: { id, stamina: gained }, inv: invView(req.user.id) });
   });
 
   r.post('/sell', auth, limit, (req, res) => {
@@ -145,6 +239,7 @@ function createTown(ctx) {
       addGold(req.user.id, total);
     })();
     if (err) return fail(res, err);
+    fun().track(req.user.id, 'sell_gold', total);
     res.json({ ok: true, sold: { id: b.itemId, qty, gold: total }, inv: invView(req.user.id) });
   });
   // 잡템(junk) 한 번에 팔기
@@ -157,6 +252,7 @@ function createTown(ctx) {
       }
       if (total) addGold(req.user.id, total);
     })();
+    fun().track(req.user.id, 'sell_gold', total);
     res.json({ ok: true, sold: { count, gold: total }, inv: invView(req.user.id) });
   });
 
@@ -227,6 +323,7 @@ function createTown(ctx) {
     announce(`🎁 ${from.name} → ${to.name}: ${what}${message ? ` — “${message}”` : ''}`);
     emitToUser(to.id, 'gift:received', { from: from.name, what, message });
     ctx.notify(to.id, 'gift', { actorId: req.user.id, text: `${what}${message ? ` — “${message}”` : ''}` });
+    fun().track(req.user.id, 'gift_sent');
     res.json({ ok: true, inv: invView(req.user.id) });
   });
 
@@ -244,7 +341,7 @@ function createTown(ctx) {
   // 화면이 필요로 하는 정의 (이름, 설명, 제작법, 항아리 보상 목록)
   function defs() {
     return {
-      settings: { staminaMax: S.staminaMax, staminaRegenMin: S.staminaRegenMin, giftMaxGold: S.giftMaxGold },
+      settings: { staminaMax: S.staminaMax, staminaRegenMin: S.staminaRegenMin, giftMaxGold: S.giftMaxGold, jarCooldownSec: S.jarCooldownSec, jarShakeSec: S.jarShakeSec },
       slots: eco.slots, rarities: eco.rarities, items: eco.items,
       spots: eco.spots.map((s) => ({ id: s.id, name: s.name, desc: s.desc, minLevel: s.minLevel, cost: s.cost,
         drops: s.drops.map((d) => d.item) })),
@@ -254,7 +351,11 @@ function createTown(ctx) {
     };
   }
 
-  return { router: r, itemName, grant, gearOf, invView, defs, addItem, addGold, equippedIds };
+  // 흔들기가 끝난 항아리를 1초마다 정산 (서버 시작 때 server.js 가 호출)
+  let timer = null;
+  function start() { if (!timer) { timer = setInterval(() => { try { settleJars(); } catch (e) { console.error('jar settle', e.message); } }, 1000); timer.unref(); } }
+
+  return { router: r, start, itemName, grant, gearOf, invView, defs, addItem, addGold, equippedIds };
 }
 
 module.exports = { createTown };

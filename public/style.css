@@ -372,3 +372,27 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; }
 .small-note { font-size: 12px; max-width: 120px; text-align: right; }
 .phase-tag.recruiting { color: var(--ok); border-color: #3d5632; }
 .phase-tag.cancelled { color: var(--danger); border-color: #5a2d27; }
+
+/* ---------- 6단계(잼컨): 칭호 · 업적 · 운세 · 항아리 흔들기 ---------- */
+.badge-title { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 99px;
+  color: var(--accent); border: 1px solid var(--accent); vertical-align: middle; white-space: nowrap; }
+.ach-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.ach-chip { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--panel-2); border: 1px solid var(--line); color: var(--accent); }
+.ach-row { padding: 6px 0; border-top: 1px solid var(--line); display: grid; gap: 3px; }
+.ach-row .ach-name { font-weight: 600; }
+.ach-row:not(.done) .ach-name { color: var(--muted); }
+.ach-row .bar { height: 5px; }
+.ach-row.done .bar > i { background: var(--accent); }
+.new-dot { color: var(--danger); font-size: 10px; }
+.fortune-card { display: grid; gap: 8px; justify-items: center; text-align: center; padding: 18px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
+.fortune-card .f-big { font-size: 42px; }
+.fortune-card .f-name { font-family: var(--serif); font-size: 26px; font-weight: 700; color: var(--accent); }
+.fortune-card .f-text { font-size: 15px; }
+.fortune-card.f-great .f-name { color: #f2c94c; text-shadow: 0 0 12px #f2c94c88; }
+.fortune-card.f-bad .f-name { color: var(--danger); }
+.jar-shaking { display: grid; gap: 6px; justify-items: center; text-align: center; padding: 22px 14px; border: 1px dashed var(--accent); border-radius: 12px; }
+.shake-ico { display: inline-block; animation: jar-shake 0.35s ease-in-out infinite; }
+.shake-ico.big { font-size: 48px; }
+.jar-other { font-size: 13px; padding: 4px 0; }
+@keyframes jar-shake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
+@media (prefers-reduced-motion: reduce) { .shake-ico { animation: none; } }

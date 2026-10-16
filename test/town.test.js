@@ -26,6 +26,7 @@ eco.jars.push(jar('junk-jar', 1, { item: 'rusty-nail', qty: [3, 3] }), jar('gold
   jar('cuirass-jar', 1, { item: 'iron-cuirass' }), jar('vest-jar', 1, { item: 'quilted-vest' }), jar('foot-jar', 1, { item: 'rabbit-foot' }),
   jar('nail2-jar', 1, { item: 'rusty-nail' }));
 eco.items['rusty-nail'].type = 'junk';
+eco.settings.jarCooldownSec = 0; eco.settings.jarShakeSec = 0; eco.achievements = []; // 흔들기·쿨타임·업적은 fun.test.js 에서 따로 검사
 eco.recipes.push({ id: 't-craft', name: '테스트 제작', output: 'steel-sword', inputs: { 'rusty-nail': 2 }, gold: 5, stat: 'str', dc: 1 });
 const EFILE = path.join(DATA_DIR, 'eco.json'); fs.writeFileSync(EFILE, JSON.stringify(eco));
 const quests = JSON.parse(fs.readFileSync(path.join(ROOT, 'content', 'quests.json'), 'utf8'));

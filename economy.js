@@ -3,14 +3,17 @@
 const { STATS, rollDie } = require('./engine');
 
 const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic'];
-const ITEM_TYPES = ['junk', 'material', 'equipment'];
+const ITEM_TYPES = ['junk', 'material', 'equipment', 'consumable'];
+// 업적 카운터 이름. farm_<장소id>, fortune_<운세id> 도 쓸 수 있어요
+const COUNTERS = ['farm', 'farm_nothing', 'farm_rare', 'craft_success', 'craft_crit', 'craft_fumble', 'jar', 'jar_jackpot', 'jar_bust_streak',
+  'sell_gold', 'gift_sent', 'use_item', 'daily', 'daily_streak', 'quest_win', 'quest_ko', 'post', 'like_received'];
 const BONUS_KEYS = ['attack', 'ac', 'hp'];
 
 function validateEconomy(eco, rules, questsDoc) {
   const errs = [];
   const bad = (m) => errs.push(m);
   const st = eco.settings || {};
-  for (const k of ['startGold', 'staminaMax', 'staminaRegenMin', 'giftMaxGold']) if (!Number.isInteger(st[k]) || st[k] < 0) bad(`settings.${k} 는 0 이상의 정수여야 합니다.`);
+  for (const k of ['startGold', 'staminaMax', 'staminaRegenMin', 'giftMaxGold', 'jarCooldownSec', 'jarShakeSec']) if (!Number.isInteger(st[k]) || st[k] < 0) bad(`settings.${k} 는 0 이상의 정수여야 합니다.`);
   if (!(st.staminaMax > 0) || !(st.staminaRegenMin > 0)) bad('settings.staminaMax / staminaRegenMin 은 1 이상이어야 합니다.');
   const rar = eco.rarities || {};
   if (!RARITY_ORDER.every((r) => typeof rar[r] === 'string')) bad(`rarities 에 ${RARITY_ORDER.join('/')} 이름이 모두 있어야 합니다.`);
@@ -31,6 +34,7 @@ function validateEconomy(eco, rules, questsDoc) {
       if (!Object.keys(b).length) bad(`아이템 ${id}: 장비에는 bonus 가 필요합니다.`);
       for (const [k, v] of Object.entries(b)) if (!BONUS_KEYS.includes(k) || !Number.isInteger(v)) bad(`아이템 ${id}: bonus.${k} 는 ${BONUS_KEYS.join('/')} 중 하나이고 값은 정수여야 합니다.`);
     }
+    if (it.type === 'consumable' && !(it.use && Number.isInteger(it.use.stamina) && it.use.stamina >= 1)) bad(`아이템 ${id}: 소모품에는 use.stamina(1 이상의 정수)가 필요합니다.`);
   }
   const hasItem = (id) => !!items[id];
   const rangeOk = (r) => Array.isArray(r) && r.length === 2 && Number.isInteger(r[0]) && Number.isInteger(r[1]) && r[0] >= 1 && r[1] >= r[0];
@@ -88,6 +92,37 @@ function validateEconomy(eco, rules, questsDoc) {
       if (!Number.isInteger(x.qty) || x.qty < 1) bad(`의뢰 ${q.id}: reward.items 수량이 1 이상의 정수가 아닙니다.`);
     });
   });
+  // 오늘의 운세
+  const dl = eco.daily;
+  const fortuneIds = new Set();
+  if (dl) {
+    if (!Number.isInteger(dl.utcOffsetHours) || dl.utcOffsetHours < -12 || dl.utcOffsetHours > 14) bad('daily.utcOffsetHours 는 -12~14 사이의 정수여야 합니다.');
+    for (const k of ['streakGold', 'streakCap', 'streakItemEvery']) if (!Number.isInteger(dl[k]) || dl[k] < 0) bad(`daily.${k} 는 0 이상의 정수여야 합니다.`);
+    if (dl.streakItem && !hasItem(dl.streakItem)) bad(`daily.streakItem 에 없는 아이템 id "${dl.streakItem}"`);
+    if (dl.luckyThings && (!Array.isArray(dl.luckyThings) || dl.luckyThings.some((x) => typeof x !== 'string'))) bad('daily.luckyThings 는 글자 목록이어야 합니다.');
+    if (!Array.isArray(dl.fortunes) || !dl.fortunes.length) bad('daily.fortunes 가 비어 있습니다.');
+    (dl.fortunes || []).forEach((f) => {
+      if (!f.id || fortuneIds.has(f.id)) bad(`운세 id 가 비었거나 중복됩니다. (${f.id})`);
+      fortuneIds.add(f.id);
+      if (typeof f.name !== 'string' || !f.name) bad(`운세 ${f.id}: name 이 없습니다.`);
+      if (!(f.weight > 0)) bad(`운세 ${f.id}: weight 는 0 보다 커야 합니다.`);
+      if (!Array.isArray(f.gold) || f.gold.length !== 2 || !Number.isInteger(f.gold[0]) || !Number.isInteger(f.gold[1]) || f.gold[0] < 0 || f.gold[1] < f.gold[0]) bad(`운세 ${f.id}: gold 는 [최소, 최대] 0 이상 정수 두 개여야 합니다.`);
+      for (const k of ['stamina', 'farmDouble']) if (f[k] !== undefined && (!Number.isInteger(f[k]) || f[k] < 0)) bad(`운세 ${f.id}: ${k} 는 0 이상의 정수여야 합니다.`);
+      if (f.craftBonus !== undefined && !Number.isInteger(f.craftBonus)) bad(`운세 ${f.id}: craftBonus 는 정수여야 합니다.`);
+      if (!Array.isArray(f.texts) || !f.texts.length) bad(`운세 ${f.id}: texts 가 비어 있습니다.`);
+    });
+  }
+  // 업적·칭호
+  const aids = new Set();
+  const counterOk = (c) => COUNTERS.includes(c) || (c.startsWith('farm_') && spotIds.has(c.slice(5))) || (c.startsWith('fortune_') && fortuneIds.has(c.slice(8)));
+  (eco.achievements || []).forEach((a) => {
+    if (!a.id || aids.has(a.id) || !/^[a-z0-9-]+$/.test(a.id)) bad(`업적 id 가 비었거나 중복이거나 영문 소문자/숫자/하이픈이 아닙니다. (${a.id})`);
+    aids.add(a.id);
+    if (typeof a.name !== 'string' || !a.name || a.name.length > 12) bad(`업적 ${a.id}: name(칭호)은 1~12자여야 합니다.`);
+    if (typeof a.counter !== 'string' || !counterOk(a.counter)) bad(`업적 ${a.id}: 모르는 counter "${a.counter}" (쓸 수 있는 것: ${COUNTERS.join(', ')}, farm_<장소id>, fortune_<운세id>)`);
+    if (!Number.isInteger(a.goal) || a.goal < 1) bad(`업적 ${a.id}: goal 은 1 이상의 정수여야 합니다.`);
+    if (!Number.isInteger(a.gold) || a.gold < 0) bad(`업적 ${a.id}: gold 는 0 이상의 정수여야 합니다.`);
+  });
   void rules;
   if (errs.length) throw new Error('경제 콘텐츠(economy.json) 오류:\n - ' + errs.join('\n - '));
 }
@@ -130,6 +165,24 @@ function rollCraft(rng, recipe, bonus) {
   return { nat, bonus, total, dc: recipe.dc, crit, fumble, success: crit || (!fumble && total >= recipe.dc) };
 }
 
+// ---------- 오늘의 운세 ----------
+// 날짜 키 (utcOffsetHours 기준 YYYY-MM-DD)
+function dayKey(eco, at) {
+  const off = ((eco.daily && eco.daily.utcOffsetHours) || 0) * 3600000;
+  return new Date(at + off).toISOString().slice(0, 10);
+}
+const prevDayKey = (eco, at) => dayKey(eco, at - 86400000);
+// 운세 뽑기: 운세 + 문구 + 골드 + 행운의 물건 + 연속 보너스
+function rollFortune(rng, eco, streak) {
+  const dl = eco.daily;
+  const f = weightedPick(rng, dl.fortunes);
+  const text = f.texts[Math.floor(rng() * f.texts.length)];
+  const lucky = dl.luckyThings && dl.luckyThings.length ? dl.luckyThings[Math.floor(rng() * dl.luckyThings.length)] : '';
+  const streakGold = dl.streakGold * Math.min(streak, dl.streakCap);
+  const streakItem = dl.streakItem && dl.streakItemEvery > 0 && streak % dl.streakItemEvery === 0 ? dl.streakItem : null;
+  return { fortune: f.id, name: f.name, text, lucky, gold: rollRange(rng, f.gold), stamina: f.stamina || 0, streakGold, streakItem };
+}
+
 // ---------- 스태미나 (저장값 + 시각으로 계산, 타이머 불필요) ----------
 function staminaNow(eco, row, at) {
   const max = eco.settings.staminaMax, regen = eco.settings.staminaRegenMin * 60000;
@@ -151,4 +204,4 @@ function gearBonus(eco, equippedIds) {
 }
 const rarityAtLeast = (a, min) => RARITY_ORDER.indexOf(a) >= RARITY_ORDER.indexOf(min);
 
-module.exports = { validateEconomy, rollSpot, rollJar, rollCraft, jarExpectedValue, staminaNow, gearBonus, weightedPick, rarityAtLeast, RARITY_ORDER };
+module.exports = { dayKey, prevDayKey, rollFortune, COUNTERS, validateEconomy, rollSpot, rollJar, rollCraft, jarExpectedValue, staminaNow, gearBonus, weightedPick, rarityAtLeast, RARITY_ORDER };

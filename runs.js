@@ -18,6 +18,7 @@ function createRuns(ctx) {
   // 이번 주 월요일 0시(한국 시간)
   const weekStart = (t) => { const d = new Date(t + KST); const day = (d.getUTCDay() + 6) % 7; return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - day * 86400000 - KST; };
   const sys = (tid, body) => say(tid, 'sys', body);
+  const track = (uid, key) => { if (ctx.track) ctx.track(uid, key); };
   const roll = (tid, body) => say(tid, 'roll', body);
   const statName = (s) => rules.statNames[s];
 
@@ -98,6 +99,7 @@ function createRuns(ctx) {
     sys(run.thread_id, r.summary);
     for (const uid of r.koUsers) {
       db.prepare("UPDATE run_players SET status = 'ko' WHERE run_id = ? AND user_id = ?").run(run.id, uid);
+      track(uid, 'quest_ko');
     }
     if (r.outcome === 'victory') finish(run, 'won');
     else if (r.outcome === 'defeat') finish(run, 'lost');
@@ -121,7 +123,7 @@ function createRuns(ctx) {
     const tag = quest.mode === 'raid' ? '#의뢰 #레이드' : '#의뢰';
     if (phase === 'won') {
       sys(run.thread_id, `🏆 ${quest.combat.victoryText}`);
-      for (const p of playersOf(run.id)) reward(run, quest, p.user_id, p.status === 'ko');
+      for (const p of playersOf(run.id)) { reward(run, quest, p.user_id, p.status === 'ko'); track(p.user_id, 'quest_win'); }
       post(`🏆 ${nameList(run.id)} 이(가) 「${quest.title}」 ${quest.mode === 'raid' ? '레이드' : '의뢰'}를 완료했다! ${tag}`);
     } else if (phase === 'lost') {
       post(`💀 ${nameList(run.id)} 이(가) 「${quest.title}」 ${quest.mode === 'raid' ? '레이드' : '의뢰'} 중 쓰러졌다… ${tag}`);

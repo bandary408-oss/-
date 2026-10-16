@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test/engine.test.js && node test/economy.test.js && node test/smoke.js && node test/feed.test.js && node test/quest.test.js && node test/town.test.js && node test/party.test.js && node test/balance.test.js",
+    "test": "node test/engine.test.js && node test/economy.test.js && node test/smoke.js && node test/feed.test.js && node test/quest.test.js && node test/town.test.js && node test/party.test.js && node test/balance.test.js && node test/fun.test.js",
     "test:engine": "node test/engine.test.js",
     "test:quest": "node test/quest.test.js",
     "sim": "node tools/simulate.js",
@@ -13,7 +13,8 @@
     "test:economy": "node test/economy.test.js",
     "test:feed": "node test/feed.test.js",
     "test:balance": "node test/balance.test.js",
-    "test:party": "node test/party.test.js"
+    "test:party": "node test/party.test.js",
+    "test:fun": "node test/fun.test.js"
   },
   "engines": {
     "node": ">=18"

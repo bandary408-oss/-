@@ -6,7 +6,9 @@
     "staminaMax": 8,
     "staminaRegenMin": 6,
     "announceRarity": "rare",
-    "giftMaxGold": 5000
+    "giftMaxGold": 5000,
+    "jarCooldownSec": 180,
+    "jarShakeSec": 10
   },
 
   "slots": { "weapon": "무기", "armor": "방어구", "trinket": "장신구" },
@@ -34,7 +36,39 @@
     "quilted-vest":  { "name": "누비 가죽옷",       "type": "equipment", "slot": "armor",   "rarity": "uncommon", "value": 20, "bonus": { "ac": 1 }, "desc": "방어도 +1" },
     "iron-cuirass":  { "name": "철 흉갑",           "type": "equipment", "slot": "armor",   "rarity": "rare",     "value": 60, "bonus": { "ac": 2 }, "desc": "방어도 +2" },
     "rabbit-foot":   { "name": "행운의 토끼발",     "type": "equipment", "slot": "trinket", "rarity": "uncommon", "value": 18, "bonus": { "hp": 3 }, "desc": "최대 HP +3" },
-    "merc-seal":     { "name": "용병단 인장",       "type": "equipment", "slot": "trinket", "rarity": "epic",     "value": 80, "bonus": { "hp": 5, "ac": 1 }, "desc": "최대 HP +5, 방어도 +1. 한때 이름값이 있었던 물건." }
+    "merc-seal":     { "name": "용병단 인장",       "type": "equipment", "slot": "trinket", "rarity": "epic",     "value": 80, "bonus": { "hp": 5, "ac": 1 }, "desc": "최대 HP +5, 방어도 +1. 한때 이름값이 있었던 물건." },
+
+    "frog-leg":      { "name": "개구리 다리",       "type": "junk", "rarity": "common",   "value": 3,  "desc": "아직 가끔 꿈틀댄다." },
+    "leech":         { "name": "통통한 거머리",     "type": "junk", "rarity": "common",   "value": 2,  "desc": "누구 피를 먹고 이렇게 컸을까." },
+    "bog-moss":      { "name": "늪 이끼",           "type": "material", "rarity": "common", "value": 4, "desc": "축축하고 질기다. 냄새는 묻지 말 것." },
+    "marsh-pearl":   { "name": "늪 진주",           "type": "material", "rarity": "rare",     "value": 20, "desc": "진흙 속에서도 빛을 잃지 않았다." },
+    "bone-shard":    { "name": "뼛조각",            "type": "junk", "rarity": "common",   "value": 3,  "desc": "사람 뼈는 아니길 빈다." },
+    "rusty-helm":    { "name": "녹슨 투구",         "type": "junk", "rarity": "uncommon", "value": 7,  "desc": "안에서 달그락 소리가 난다. 열어보지 않기로 했다." },
+    "silver-coin":   { "name": "낡은 은화",         "type": "material", "rarity": "uncommon", "value": 9, "desc": "옛 왕국의 얼굴이 새겨져 있다. 녹이면 은이 된다." },
+    "ghost-oil":     { "name": "유령불 기름",       "type": "material", "rarity": "rare",     "value": 22, "desc": "병 안에서 혼자 일렁인다." },
+    "gold-leaf":     { "name": "금박 조각",         "type": "material", "rarity": "uncommon", "value": 12, "desc": "신전 기둥에서 슬쩍 벗겨냈다. 신이 보고 있다." },
+    "holy-water":    { "name": "성수",              "type": "material", "rarity": "rare",     "value": 24, "desc": "마시면 안 된다. 아마도." },
+    "rune-tablet":   { "name": "고대 문양 석판",    "type": "material", "rarity": "epic",     "value": 45, "desc": "읽을 수는 없는데 읽히는 기분이 든다." },
+    "obsidian":      { "name": "흑요석",            "type": "material", "rarity": "rare",     "value": 28, "desc": "용의 숨결로 녹았다 굳은 돌. 날이 서 있다." },
+    "charred-bone":  { "name": "그을린 뼈",         "type": "junk", "rarity": "uncommon", "value": 6,  "desc": "용의 저녁 식사였던 무언가." },
+    "dragon-scale":  { "name": "용 비늘",           "type": "material", "rarity": "epic",     "value": 60, "desc": "떨어진 비늘 하나가 방패만 하다." },
+    "love-letter":   { "name": "주인 잃은 연애편지", "type": "junk", "rarity": "uncommon", "value": 1, "desc": "읽어보고 싶지만 참는다. …조금만 읽었다." },
+    "lost-dice":     { "name": "누군가의 주사위",   "type": "junk", "rarity": "common",   "value": 4,  "desc": "굴리면 6만 나온다. 수상하다." },
+
+    "herb-tea":      { "name": "쌉싸름한 약초차",   "type": "consumable", "rarity": "common",   "value": 6,  "use": { "stamina": 2 }, "desc": "마시면 체력 +2. 맛은 기대하지 말 것." },
+    "mystery-stew":  { "name": "정체불명의 스튜",   "type": "consumable", "rarity": "common",   "value": 2,  "use": { "stamina": 1 }, "desc": "마시면 체력 +1. 건더기가 나를 쳐다본다." },
+    "vigor-potion":  { "name": "활력 물약",         "type": "consumable", "rarity": "uncommon", "value": 15, "use": { "stamina": 4 }, "desc": "마시면 체력 +4. 톡 쏘는 맛." },
+    "dragon-brew":   { "name": "용의 숨결주",       "type": "consumable", "rarity": "epic",     "value": 50, "use": { "stamina": 8 }, "desc": "마시면 체력 +8. 한 모금에 귀에서 연기가 난다." },
+
+    "bone-club":     { "name": "뼈 몽둥이",         "type": "equipment", "slot": "weapon",  "rarity": "uncommon", "value": 22, "bonus": { "attack": 1 }, "desc": "명중 +1. 원시적이지만 확실하다." },
+    "holy-mace":     { "name": "축복받은 철퇴",     "type": "equipment", "slot": "weapon",  "rarity": "rare",     "value": 70, "bonus": { "attack": 1, "ac": 1 }, "desc": "명중 +1, 방어도 +1. 때릴 때마다 작게 종소리가 난다." },
+    "obsidian-blade":{ "name": "흑요석 검",         "type": "equipment", "slot": "weapon",  "rarity": "epic",     "value": 110, "bonus": { "attack": 2, "hp": 2 }, "desc": "명중 +2, 최대 HP +2. 칼집이 자꾸 베인다." },
+    "moss-cloak":    { "name": "늪이끼 망토",       "type": "equipment", "slot": "armor",   "rarity": "uncommon", "value": 24, "bonus": { "ac": 1, "hp": 1 }, "desc": "방어도 +1, 최대 HP +1. 위장 효과는 확실하다. 냄새도." },
+    "ghost-shroud":  { "name": "유령 수의",         "type": "equipment", "slot": "armor",   "rarity": "rare",     "value": 65, "bonus": { "ac": 2, "hp": 1 }, "desc": "방어도 +2, 최대 HP +1. 입으면 발이 살짝 뜬다." },
+    "dragonscale-mail": { "name": "용비늘 갑옷",    "type": "equipment", "slot": "armor",   "rarity": "epic",     "value": 150, "bonus": { "ac": 3 }, "desc": "방어도 +3. 원래 주인이 찾으러 올지도 모른다." },
+    "lucky-dice":    { "name": "사기 주사위",       "type": "equipment", "slot": "trinket", "rarity": "uncommon", "value": 20, "bonus": { "attack": 1 }, "desc": "명중 +1. 왜 6만 나오는지는 묻지 말 것." },
+    "pearl-earring": { "name": "늪진주 귀걸이",     "type": "equipment", "slot": "trinket", "rarity": "rare",     "value": 50, "bonus": { "hp": 4 }, "desc": "최대 HP +4. 늪 냄새는 다행히 빠졌다." },
+    "rune-amulet":   { "name": "고대 문양 부적",    "type": "equipment", "slot": "trinket", "rarity": "epic",     "value": 120, "bonus": { "attack": 1, "ac": 1, "hp": 3 }, "desc": "명중 +1, 방어도 +1, 최대 HP +3. 밤마다 뭐라고 속삭인다." }
   },
 
   "spots": [
@@ -78,6 +112,60 @@
         { "item": "spirit-dust", "weight": 5 },
         { "item": "mana-crystal", "weight": 1 }
       ]
+    },
+    {
+      "id": "marsh", "name": "안개 낀 늪", "minLevel": 2, "cost": 1,
+      "desc": "발이 푹푹 빠지는 늪. 이끼와 이상한 것들이 많다.",
+      "nothing": { "weight": 14, "texts": ["장화에 물이 가득 찼다.", "거머리한테 피만 뺏겼다.", "개구리와 눈이 마주쳤다. 서로 못 본 걸로 했다."] },
+      "drops": [
+        { "item": "bog-moss", "weight": 26, "qty": [1, 2] },
+        { "item": "frog-leg", "weight": 18 },
+        { "item": "leech", "weight": 16 },
+        { "item": "toadstool", "weight": 12 },
+        { "item": "herb", "weight": 10 },
+        { "item": "love-letter", "weight": 4 },
+        { "item": "marsh-pearl", "weight": 4 }
+      ]
+    },
+    {
+      "id": "graveyard", "name": "버려진 묘지", "minLevel": 3, "cost": 1,
+      "desc": "아무도 성묘 오지 않는 묘지. 밤에는 불빛이 떠다닌다.",
+      "nothing": { "weight": 16, "texts": ["묘지기에게 삽으로 쫓겨났다.", "뒤에서 누가 이름을 불렀다. 뒤돌아보지 않았다.", "묘비에 적힌 이름이 내 이름이었다. …동명이인이겠지."] },
+      "drops": [
+        { "item": "bone-shard", "weight": 26, "qty": [1, 3] },
+        { "item": "rusty-helm", "weight": 14 },
+        { "item": "silver-coin", "weight": 14 },
+        { "item": "lost-dice", "weight": 8 },
+        { "item": "love-letter", "weight": 6 },
+        { "item": "ghost-oil", "weight": 6 },
+        { "item": "spirit-dust", "weight": 4 }
+      ]
+    },
+    {
+      "id": "temple", "name": "잊힌 신전", "minLevel": 4, "cost": 1,
+      "desc": "이름 모를 신을 모시던 곳. 함정이 아직 살아 있다는 소문.",
+      "nothing": { "weight": 16, "texts": ["기도만 하고 나왔다. 마음은 편해졌다.", "함정 발판을 밟았다. 다행히 녹슬어 있었다.", "제단에 동전을 놓고 왔다. 왜 그랬는지 모르겠다."] },
+      "drops": [
+        { "item": "gold-leaf", "weight": 24 },
+        { "item": "silver-coin", "weight": 14, "qty": [1, 2] },
+        { "item": "broken-bottle", "weight": 10 },
+        { "item": "holy-water", "weight": 10 },
+        { "item": "spirit-dust", "weight": 10 },
+        { "item": "mana-crystal", "weight": 3 },
+        { "item": "rune-tablet", "weight": 2 }
+      ]
+    },
+    {
+      "id": "dragon-nest", "name": "용의 둥지 언저리", "minLevel": 5, "cost": 2,
+      "desc": "자고 있는 용의 둥지 바깥쪽. 숨소리가 들리면 도망칠 것.",
+      "nothing": { "weight": 20, "texts": ["둥지 쪽에서 콧김 소리가 들려 전력으로 도망쳤다.", "눈썹이 조금 그을렸다.", "용과 눈이 마주쳤다. 용이 다시 눈을 감았다. 살았다."] },
+      "drops": [
+        { "item": "charred-bone", "weight": 24, "qty": [1, 2] },
+        { "item": "obsidian", "weight": 16 },
+        { "item": "iron-scrap", "weight": 14, "qty": [1, 3] },
+        { "item": "mana-crystal", "weight": 5 },
+        { "item": "dragon-scale", "weight": 4 }
+      ]
     }
   ],
 
@@ -87,7 +175,22 @@
     { "id": "r-rabbit-foot", "name": "행운 부적 엮기", "output": "rabbit-foot", "inputs": { "crow-feather": 3, "leather-cord": 1, "herb": 1 }, "gold": 5, "stat": "cha", "dc": 11 },
     { "id": "r-silver-dagger", "name": "은 도금 단검 제작", "output": "silver-dagger", "inputs": { "iron-scrap": 2, "moon-dew": 1 }, "gold": 30, "stat": "dex", "dc": 13 },
     { "id": "r-iron-cuirass", "name": "철 흉갑 제작", "output": "iron-cuirass", "inputs": { "iron-scrap": 6, "hardleather": 2 }, "gold": 40, "stat": "str", "dc": 14 },
-    { "id": "r-mana-staff", "name": "마력 지팡이 제작", "output": "mana-staff", "inputs": { "spirit-dust": 3, "mana-crystal": 1, "leather-cord": 1 }, "gold": 60, "stat": "int", "dc": 16 }
+    { "id": "r-mana-staff", "name": "마력 지팡이 제작", "output": "mana-staff", "inputs": { "spirit-dust": 3, "mana-crystal": 1, "leather-cord": 1 }, "gold": 60, "stat": "int", "dc": 16 },
+
+    { "id": "r-herb-tea", "name": "약초차 우리기", "output": "herb-tea", "inputs": { "herb": 3 }, "gold": 0, "stat": "int", "dc": 8 },
+    { "id": "r-mystery-stew", "name": "아무거나 끓이기", "output": "mystery-stew", "inputs": { "frog-leg": 2, "toadstool": 1, "leech": 1 }, "gold": 0, "stat": "cha", "dc": 6 },
+    { "id": "r-vigor-potion", "name": "활력 물약 조제", "output": "vigor-potion", "inputs": { "herb": 2, "bog-moss": 2, "moon-dew": 1 }, "gold": 5, "stat": "int", "dc": 11 },
+    { "id": "r-dragon-brew", "name": "용의 숨결주 담그기", "output": "dragon-brew", "inputs": { "dragon-scale": 1, "holy-water": 1, "herb": 2 }, "gold": 20, "stat": "int", "dc": 15 },
+    { "id": "r-melt-silver", "name": "은화 녹여 철 사기", "output": "iron-scrap", "inputs": { "silver-coin": 1 }, "gold": 2, "stat": "str", "dc": 7 },
+    { "id": "r-bone-club", "name": "뼈 몽둥이 엮기", "output": "bone-club", "inputs": { "bone-shard": 4, "leather-cord": 1 }, "gold": 0, "stat": "str", "dc": 10 },
+    { "id": "r-holy-mace", "name": "축복받은 철퇴 제작", "output": "holy-mace", "inputs": { "iron-scrap": 4, "holy-water": 1 }, "gold": 35, "stat": "cha", "dc": 13 },
+    { "id": "r-obsidian-blade", "name": "흑요석 검 벼리기", "output": "obsidian-blade", "inputs": { "obsidian": 3, "iron-scrap": 2, "leather-cord": 1 }, "gold": 50, "stat": "str", "dc": 15 },
+    { "id": "r-moss-cloak", "name": "늪이끼 망토 짜기", "output": "moss-cloak", "inputs": { "bog-moss": 4, "torn-cloth": 2 }, "gold": 0, "stat": "dex", "dc": 10 },
+    { "id": "r-ghost-shroud", "name": "유령 수의 바느질", "output": "ghost-shroud", "inputs": { "ghost-oil": 2, "torn-cloth": 3, "hardleather": 1 }, "gold": 25, "stat": "int", "dc": 14 },
+    { "id": "r-dragonscale-mail", "name": "용비늘 갑옷 제작", "output": "dragonscale-mail", "inputs": { "dragon-scale": 3, "hardleather": 3, "iron-scrap": 4 }, "gold": 80, "stat": "str", "dc": 17 },
+    { "id": "r-lucky-dice", "name": "주사위 깎기", "output": "lucky-dice", "inputs": { "lost-dice": 3 }, "gold": 0, "stat": "cha", "dc": 9 },
+    { "id": "r-pearl-earring", "name": "늪진주 귀걸이 세공", "output": "pearl-earring", "inputs": { "marsh-pearl": 2, "silver-coin": 2 }, "gold": 15, "stat": "dex", "dc": 12 },
+    { "id": "r-rune-amulet", "name": "고대 문양 부적 새기기", "output": "rune-amulet", "inputs": { "rune-tablet": 1, "gold-leaf": 3, "spirit-dust": 2 }, "gold": 60, "stat": "int", "dc": 16 }
   ],
 
   "jars": [
@@ -118,6 +221,73 @@
         { "item": "mana-staff", "weight": 1.2 }, { "item": "merc-seal", "weight": 1 },
         { "gold": [400, 700], "weight": 2 }
       ]
+    },
+    {
+      "id": "peddler-sack", "name": "수상한 행상인의 자루", "price": 30,
+      "desc": "\"뭐가 들었는지는 나도 몰라.\" 행상인이 눈을 피한다.",
+      "prizes": [
+        { "gold": [20, 50], "weight": 16 },
+        { "item": "mystery-stew", "weight": 12 }, { "item": "herb-tea", "weight": 10 }, { "item": "vigor-potion", "weight": 6 },
+        { "item": "love-letter", "weight": 10 }, { "item": "lost-dice", "weight": 8 }, { "item": "frog-leg", "weight": 8 },
+        { "item": "bog-moss", "weight": 8, "qty": [1, 3] }, { "item": "silver-coin", "weight": 6, "qty": [1, 2] },
+        { "item": "marsh-pearl", "weight": 3 }, { "item": "ghost-oil", "weight": 3 },
+        { "item": "lucky-dice", "weight": 3 }, { "item": "moss-cloak", "weight": 3 }, { "item": "bone-club", "weight": 3 },
+        { "item": "dragon-brew", "weight": 0.6 },
+        { "gold": [200, 350], "weight": 2.5 }
+      ]
     }
+  ],
+
+  "daily": {
+    "_설명": "하루 한 번 [오늘의 운세]를 뽑으면 운세에 따라 골드·체력과 오늘 하루 효과를 받아요. 연속으로 뽑으면 보너스 골드, streakItemEvery 일마다 streakItem 을 줘요. 날짜는 utcOffsetHours(한국 9) 기준 자정에 바뀝니다.",
+    "utcOffsetHours": 9,
+    "streakGold": 5,
+    "streakCap": 7,
+    "streakItemEvery": 7,
+    "streakItem": "spirit-dust",
+    "luckyThings": ["녹슨 못", "까마귀 깃털", "이빨 빠진 빗", "개구리", "남의 도시락", "젖은 양말", "빨간 실", "부러진 화살", "항아리 조각", "오래된 지도", "고양이 수염", "달빛 이슬"],
+    "fortunes": [
+      { "id": "great", "name": "대길", "weight": 6, "announce": true, "gold": [30, 60], "stamina": 3, "craftBonus": 2, "farmDouble": 25,
+        "texts": ["별이 당신 편이다. 오늘은 뭘 해도 된다. 진짜로.", "용도 오늘은 당신을 보면 길을 비켜줄 것이다.", "던지는 것마다 맞고, 여는 것마다 금이 나온다."] },
+      { "id": "good", "name": "길", "weight": 20, "gold": [15, 30], "stamina": 1, "craftBonus": 1, "farmDouble": 10,
+        "texts": ["작은 행운이 발밑에 굴러다닌다. 잘 보고 주울 것.", "누군가 당신 이야기를 좋게 하고 있다.", "오늘 만든 물건은 손에 착 감긴다."] },
+      { "id": "normal", "name": "평", "weight": 40, "gold": [8, 15], "stamina": 0, "craftBonus": 0, "farmDouble": 0,
+        "texts": ["무난한 하루. 무난한 것도 재능이다.", "점심은 맛있을 것이다. 그게 다다.", "특별한 일은 없다. 그러니 직접 만들 것."] },
+      { "id": "meh", "name": "소흉", "weight": 24, "gold": [3, 8], "stamina": 0, "craftBonus": 0, "farmDouble": 0,
+        "texts": ["발밑을 조심할 것. 특히 소똥.", "오늘 빌려준 돈은 돌아오지 않는다.", "모자를 잘 붙잡을 것. 바람이 당신을 노린다."] },
+      { "id": "bad", "name": "대흉", "weight": 10, "announce": true, "gold": [1, 3], "stamina": 0, "craftBonus": -1, "farmDouble": 0,
+        "texts": ["오늘은 항아리 근처에 가지 마세요. (가도 됩니다. 책임은 안 집니다.)", "까마귀가 당신 이름을 외웠다.", "망치는 반드시 손가락을 찾아온다."] }
+    ]
+  },
+
+  "achievements": [
+    { "id": "first-farm",   "name": "풀뜯는 신입",       "desc": "처음으로 채집했다",                 "counter": "farm", "goal": 1, "gold": 5, "quiet": true },
+    { "id": "farmer",       "name": "숲의 단골",         "desc": "채집 50번",                         "counter": "farm", "goal": 50, "gold": 50 },
+    { "id": "rake",         "name": "인간 갈퀴",         "desc": "채집 300번",                        "counter": "farm", "goal": 300, "gold": 200 },
+    { "id": "empty-hands",  "name": "빈손의 달인",       "desc": "채집에서 꽝 10번",                  "counter": "farm_nothing", "goal": 10, "gold": 20 },
+    { "id": "sharp-eye",    "name": "눈썰미",            "desc": "채집으로 희귀 이상 아이템 5번 발견", "counter": "farm_rare", "goal": 5, "gold": 40 },
+    { "id": "frog-friend",  "name": "개구리의 친구",     "desc": "안개 낀 늪에서 채집 30번",          "counter": "farm_marsh", "goal": 30, "gold": 30 },
+    { "id": "grave-digger", "name": "무덤 도굴꾼",       "desc": "버려진 묘지에서 채집 30번",         "counter": "farm_graveyard", "goal": 30, "gold": 40 },
+    { "id": "fearless",     "name": "겁 없는 놈",        "desc": "용의 둥지 언저리에서 채집 10번",    "counter": "farm_dragon-nest", "goal": 10, "gold": 80 },
+    { "id": "crafter",      "name": "풋내기 장인",       "desc": "제작 성공 10번",                    "counter": "craft_success", "goal": 10, "gold": 30 },
+    { "id": "master-smith", "name": "장인 정신",         "desc": "제작 성공 50번",                    "counter": "craft_success", "goal": 50, "gold": 150 },
+    { "id": "god-hand",     "name": "신의 손",           "desc": "제작 대성공 3번",                   "counter": "craft_crit", "goal": 3, "gold": 60 },
+    { "id": "boom",         "name": "폭발 전문가",       "desc": "제작 대실패 5번",                   "counter": "craft_fumble", "goal": 5, "gold": 30, "hidden": true },
+    { "id": "jar-fan",      "name": "항아리 수집가",     "desc": "도박항아리 20번",                   "counter": "jar", "goal": 20, "gold": 20 },
+    { "id": "jar-addict",   "name": "항아리 중독",       "desc": "도박항아리 100번",                  "counter": "jar", "goal": 100, "gold": 100 },
+    { "id": "bust-king",    "name": "꽝의 신",           "desc": "도박항아리에서 연속 7번 본전도 못 건졌다", "counter": "jar_bust_streak", "goal": 7, "gold": 50, "hidden": true },
+    { "id": "jackpot",      "name": "대박 체질",         "desc": "도박항아리에서 가격의 3배 이상 골드", "counter": "jar_jackpot", "goal": 1, "gold": 30 },
+    { "id": "merchant",     "name": "장사꾼",            "desc": "판매로 1000G 벌기",                 "counter": "sell_gold", "goal": 1000, "gold": 50 },
+    { "id": "santa",        "name": "산타",              "desc": "선물 10번 보내기",                  "counter": "gift_sent", "goal": 10, "gold": 30 },
+    { "id": "potion-addict","name": "물약 중독",         "desc": "소모품 20개 사용",                  "counter": "use_item", "goal": 20, "gold": 30 },
+    { "id": "regular-7",    "name": "개근상",            "desc": "오늘의 운세 7일 연속",              "counter": "daily_streak", "goal": 7, "gold": 70 },
+    { "id": "regular-28",   "name": "용병단 터줏대감",   "desc": "오늘의 운세 28일 연속",             "counter": "daily_streak", "goal": 28, "gold": 300 },
+    { "id": "heaven-luck",  "name": "천운",              "desc": "대길 3번",                          "counter": "fortune_great", "goal": 3, "gold": 30 },
+    { "id": "cursed",       "name": "불운의 아이콘",     "desc": "대흉 3번",                          "counter": "fortune_bad", "goal": 3, "gold": 30, "hidden": true },
+    { "id": "worker",       "name": "일하는 용병",       "desc": "의뢰 완료 5번",                     "counter": "quest_win", "goal": 5, "gold": 50 },
+    { "id": "veteran",      "name": "백전노장",          "desc": "의뢰 완료 25번",                    "counter": "quest_win", "goal": 25, "gold": 200 },
+    { "id": "floor-lover",  "name": "바닥과 친한 자",    "desc": "의뢰에서 전투불능 3번",             "counter": "quest_ko", "goal": 3, "gold": 20, "hidden": true },
+    { "id": "chatterbox",   "name": "수다쟁이",          "desc": "타임라인에 글 50개",                "counter": "post", "goal": 50, "gold": 30 },
+    { "id": "popular",      "name": "인기인",            "desc": "하트 50개 받기",                    "counter": "like_received", "goal": 50, "gold": 50 }
   ]
 }

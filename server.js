@@ -26,6 +26,7 @@ const { createTown } = require('./town');
 const { createFeed } = require('./feed');
 const X = require('./economy');
 const { createBalance } = require('./balance');
+const { createFun } = require('./fun');
 
 // ---- 게임 콘텐츠 (content/*.json 을 고치면 서버 재시작 때 반영, 숫자는 관리자 [밸런스] 탭에서 즉시 조정) ----
 const RULES = JSON.parse(fs.readFileSync(path.join(__dirname, 'content', 'rules.json'), 'utf8'));
@@ -229,6 +230,7 @@ function publicChar(c) {
   return {
     id: c.id, userId: c.user_id, name: c.name, class: c.class, title: c.title,
     bio: c.bio, appearance: c.appearance, link: c.link || '', image: c.image ? `/uploads/${c.image}` : '',
+    badge: fun.badgeName(c.badge),
     ...sheetWithGear(c),
   };
 }
@@ -558,8 +560,10 @@ app.post('/api/report', auth, (req, res) => {
 
 // ---- 관리자 API ----
 // 타임라인(글·답글·하트·멘션·알림) API
+let fun = null; // 아래에서 만듦 (업적 기록용으로 먼저 이어둠)
 const feed = createFeed({
   db, auth, now, cleanText, blockReason, io: () => io, emitToUser, systemUserId: SYSTEM_USER_ID, maxLen: LIMITS.post,
+  track: (uid, key) => fun && fun.track(uid, key), badgeName: (id) => (fun ? fun.badgeName(id) : ''),
 });
 app.use('/api', feed.router);
 
@@ -567,13 +571,19 @@ app.use('/api', feed.router);
 const town = createTown({
   announce: feed.systemPost, notify: feed.notify,
   db, eco: ECO, rules: RULES, auth, now, rng: process.env.RNG_SEED ? E.mulberry32(Number(process.env.RNG_SEED) + 7) : E.secureRng,
+  fun: () => fun, broadcast: (ev, payload) => io.emit(ev, payload),
   say: systemSay, emitToUser, cleanText, townChannelId: () => db.prepare("SELECT id FROM threads WHERE slug = 'town'").get().id,
 });
 app.use('/api', town.router);
 
+// 잼컨: 오늘의 운세 · 업적·칭호 API
+fun = createFun({ db, eco: ECO, auth, now, rng: process.env.RNG_SEED ? E.mulberry32(Number(process.env.RNG_SEED) + 11) : E.secureRng,
+  announce: feed.systemPost, notify: feed.notify, emitToUser, town: () => town });
+app.use('/api', fun.router);
+
 // 의뢰(조사·전투) API
 const runs = createRuns({
-  town, post: feed.systemPost,
+  town, post: feed.systemPost, track: (uid, key) => fun.track(uid, key),
   db, rules: RULES, quests: QUESTS, auth, now, io: () => io, emitToUser, say: systemSay, upsertRead,
   cleanText, questsChannelId: () => db.prepare("SELECT id FROM threads WHERE slug = 'quests'").get().id,
   config: ROUND,
@@ -899,6 +909,7 @@ io.on('connection', (socket) => {
 
 if (require.main === module) {
   runs.start();
+  town.start();
   server.listen(PORT, () => console.log(`서버 실행 중: http://localhost:${PORT}`));
 }
 module.exports = { app, server, io };

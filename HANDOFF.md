@@ -23,6 +23,7 @@
 5. 타임라인: 글/답글/리포스트·인용/하트/멘션/해시태그/알림/신고, 공식 계정 소식(#의뢰 #장터)
 6. 파티·레이드(5단계): 의뢰 단위 파티(상시 파티 없음). 파티 2~4명 방장 모집 → 출발. 레이드는 관리자가 엶, 최소 3명·최대 제한 없음, 보스 2페이즈, 같은 레이드 주 1회 전액 보상. 보상 각자 전액, KO 는 경험치 절반, 부활 없음. 적 HP 인원 비례(1인당 +60%). 응원은 구경꾼·쓰러진 사람만. 모집 중도 "진행 중"으로 쳐서 동시 1개. (README 5단계 참고)
 7. 관리자 [밸런스] 탭(balance.js): content/*.json 의 숫자·주사위·조사 난이도를 화면에서 고치면 기존 검사를 거쳐 재시작 없이 반영. 조정값·기록은 DATA_DIR/balance.json (content 파일은 그대로, zip 덮어써도 유지). 되돌리기·기본값으로·현재 수치 내려받기. 스킬 desc 의 {shieldReduce}/{backstabBonus}/{dice} 는 서버가 채움.
+8. 잼컨(fun.js): 오늘의 운세(하루 1회, KST 자정, 연속 보너스, 하루 효과 craftBonus/farmDouble), 업적 28개·칭호(characters.badge, user_counters/user_achievements), 소모품(type consumable, use.stamina), 항아리 쿨타임 3분 + 10초 흔들기(jar_pulls, 결과는 서버가 1초마다 정산). 채집 장소 4·아이템 29·제작법 14·항아리 1 추가. 설정은 economy.json settings/daily/achievements.
 
 ## 4. 기술 스택·구조
 Node 22, Express 4, Socket.IO 4, better-sqlite3 ^11.5 (Node 24 프리빌드 없음 → Node 22 LTS 사용), multer, sharp, scrypt, HttpOnly 쿠키 세션, CSP `script-src 'self'`(인라인 스크립트 금지), Origin 검사, 레이트리밋.
