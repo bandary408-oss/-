@@ -349,3 +349,16 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; }
 .nav-room { display: inline-flex; }
 
 @media (max-width: 900px) { .side-nav, .trend-box { display: none; } }
+
+/* 관리자 · 밸런스 */
+.bal-group { border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 6px; }
+.bal-group > summary { cursor: pointer; padding: 8px 10px; font-weight: 600; }
+.bal-group > .bal-rows { padding: 0 10px 8px; }
+.bal-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px dashed var(--line); flex-wrap: wrap; }
+.bal-row .bal-label { flex: 1 1 220px; font-size: 14px; }
+.bal-row input, .bal-row select { width: 100px; }
+.bal-row.dirty input, .bal-row.dirty select { outline: 2px solid var(--accent); }
+.bal-hist { font-size: 13px; padding: 6px 0; border-top: 1px dashed var(--line); }
+.bal-hist ul { margin: 4px 0; padding-left: 18px; }
+.bal-warn { white-space: pre-wrap; color: var(--danger); }
+.bal-error { white-space: pre-wrap; color: var(--danger); font-size: 13px; }

@@ -55,6 +55,7 @@
       else if (current === 'threads') await renderThreads(view);
       else if (current === 'posts') await renderPosts(view);
       else if (current === 'reports') await renderReports(view);
+      else if (current === 'balance') await renderBalance(view);
       else await renderInvites(view);
     } catch (e) { view.textContent = ''; view.append(h('p', { class: 'error' }, e.message)); }
     refreshReportCount();
@@ -236,6 +237,130 @@
         h('table', {}, h('tbody', {}, used.map((i) =>
           h('tr', {}, h('td', { class: 'code' }, i.code), h('td', {}, '@' + i.usedBy), h('td', { class: 'muted' }, fmt(i.usedAt))))))));
     }
+  }
+
+  // ----- 밸런스 (숫자 조정) -----
+  // 바꾼 칸은 pending 에 모아 두었다가 [저장] 한 번에 보냅니다. 서버가 전체를 검증하고 통과하면 즉시 반영돼요.
+  const bal = { pending: new Map(), query: '', open: new Set(), data: null, error: '' };
+
+  async function renderBalance(view, data) {
+    bal.data = data || await api('/api/admin/balance');
+    const { fields, history, warnings } = bal.data;
+    view.textContent = '';
+
+    const errBox = h('div', { class: 'bal-error' }, bal.error);
+    const count = h('strong', {}, String(bal.pending.size));
+    const note = h('input', { placeholder: '메모 (선택, 예: 도적 두목 너무 셈)', maxlength: 100, style: 'max-width:260px' });
+    const save = act(async () => {
+      if (!bal.pending.size) { toast('바뀐 값이 없어요.'); return; }
+      try {
+        const r = await api('/api/admin/balance', { method: 'POST', body: { changes: Object.fromEntries(bal.pending), note: note.value } });
+        bal.pending.clear(); bal.error = '';
+        toast(r.changed ? `${r.changed}개 값을 바꿨어요. 바로 적용됐어요.` : '바뀐 값이 없어요.');
+        await renderBalance(view, r);
+      } catch (e) { bal.error = e.message; errBox.textContent = e.message; throw e; }
+    });
+    const search = h('input', { type: 'search', placeholder: '찾기 (예: 두목, 화염구, 항아리)', value: bal.query, style: 'max-width:260px' });
+
+    view.append(h('div', { class: 'card' },
+      h('div', { class: 'muted', style: 'margin-bottom:8px' },
+        '숫자를 고치고 [저장]을 누르면 서버를 끄지 않아도 바로 적용돼요. 잘못된 값은 저장되지 않고 이유를 알려줘요. ',
+        '이미 진행 중인 전투의 적 HP 등은 그대로이고, 다음 의뢰부터 바뀌어요. 접속 중인 사람은 새로고침하면 설명 문구도 바뀌어요.'),
+      h('div', { class: 'btn-row', style: 'align-items:center' },
+        search, note,
+        h('button', { class: 'btn primary small', type: 'button', onclick: save }, '저장 (', count, '개)'),
+        h('button', { class: 'btn small', type: 'button', onclick: () => { bal.pending.clear(); bal.error = ''; renderBalance(view, bal.data); } }, '고친 것 취소'),
+        h('a', { class: 'btn small', href: '/api/admin/balance/export', download: 'balance-content.json' }, '현재 수치 내려받기'),
+        h('button', { class: 'btn small danger', type: 'button', onclick: act(async () => {
+          if (!window.confirm('관리자가 바꾼 값을 모두 지우고 기본값(content 파일)으로 돌릴까요? 기록은 남아서 다시 되돌릴 수 있어요.')) return;
+          const r = await api('/api/admin/balance/reset', { method: 'POST' });
+          bal.pending.clear();
+          toast('기본값으로 돌렸어요.');
+          await renderBalance(view, r);
+        }) }, '모두 기본값으로')),
+      errBox,
+      (warnings || []).map((w) => h('div', { class: 'bal-warn' }, '⚠ ' + w))));
+
+    // 묶음별로 접어서 보여줌
+    const groups = new Map();
+    for (const f of fields) {
+      if (!groups.has(f.group)) groups.set(f.group, []);
+      groups.get(f.group).push(f);
+    }
+    const list = h('div', { class: 'card' });
+    const rowsOf = [];
+    for (const [g, fs] of groups) {
+      const rows = fs.map((f) => {
+        const cur = bal.pending.has(f.key) ? bal.pending.get(f.key) : f.value;
+        let input;
+        if (f.kind === 'choice') {
+          input = h('select', {}, f.options.map((o) => h('option', { value: o, selected: String(cur) === o }, (f.optionLabels || {})[o] || o)));
+        } else {
+          input = h('input', { type: f.kind === 'number' ? 'number' : 'text', step: 'any', value: String(cur) });
+        }
+        const row = h('div', { class: 'bal-row' + (bal.pending.has(f.key) ? ' dirty' : '') },
+          h('span', { class: 'bal-label' }, f.label,
+            f.changed ? h('span', { class: 'tag good', title: '관리자가 바꾼 값' }, '조정됨') : null),
+          input,
+          h('span', { class: 'muted' }, `기본 ${(f.optionLabels || {})[f.base] || f.base}`));
+        const onEdit = () => {
+          const v = f.kind === 'number' ? (input.value === '' ? '' : Number(input.value)) : input.value;
+          if (String(v) === String(f.value)) bal.pending.delete(f.key); else bal.pending.set(f.key, v);
+          row.classList.toggle('dirty', bal.pending.has(f.key));
+          count.textContent = String(bal.pending.size);
+        };
+        input.addEventListener(f.kind === 'choice' ? 'change' : 'input', onEdit);
+        row.dataset.search = (g + ' ' + f.label).toLowerCase();
+        return row;
+      });
+      const changedN = fs.filter((f) => f.changed).length;
+      const det = h('details', { class: 'bal-group', open: bal.open.has(g) },
+        h('summary', {}, g, changedN ? h('span', { class: 'tag good' }, `조정 ${changedN}`) : null),
+        h('div', { class: 'bal-rows' }, rows));
+      det.addEventListener('toggle', () => { if (det.open) bal.open.add(g); else bal.open.delete(g); });
+      list.append(det);
+      rowsOf.push([det, rows]);
+    }
+    const applySearch = () => {
+      bal.query = search.value;
+      const q = search.value.trim().toLowerCase();
+      for (const [det, rows] of rowsOf) {
+        let any = false;
+        rows.forEach((r) => { const ok = !q || r.dataset.search.includes(q); r.style.display = ok ? '' : 'none'; any = any || ok; });
+        det.style.display = any ? '' : 'none';
+        if (q && any) det.open = true;
+      }
+    };
+    search.addEventListener('input', applySearch);
+    view.append(list);
+    applySearch();
+
+    // 변경 기록 + 되돌리기
+    const hist = h('div', { class: 'card' }, h('div', { style: 'margin-bottom:6px' }, '변경 기록 (최근 50개)'));
+    if (!history.length) hist.append(h('div', { class: 'muted' }, '아직 바꾼 적이 없어요.'));
+    for (const e of history) {
+      const shown = e.changes.slice(0, 8);
+      hist.append(h('div', { class: 'bal-hist' },
+        h('div', {}, h('strong', {}, `#${e.id}`), ` ${fmt(e.at)} · @${e.by || '-'}`, e.note ? ` · ${e.note}` : ''),
+        h('ul', {}, shown.map((c) => h('li', {}, `${c.label}: ${c.from} → ${c.to}`)),
+          e.changes.length > shown.length ? h('li', { class: 'muted' }, `외 ${e.changes.length - shown.length}개`) : null),
+        h('div', { class: 'btn-row' },
+          h('button', { class: 'btn small', type: 'button', onclick: act(async () => {
+            if (!window.confirm(`#${e.id} 변경 직전 상태로 되돌릴까요?`)) return;
+            const r = await api('/api/admin/balance/revert', { method: 'POST', body: { id: e.id, mode: 'before' } });
+            bal.pending.clear();
+            toast('되돌렸어요.');
+            await renderBalance(view, r);
+          }) }, '이 변경 전으로 되돌리기'),
+          h('button', { class: 'btn small', type: 'button', onclick: act(async () => {
+            if (!window.confirm(`#${e.id} 저장 직후 상태로 맞출까요?`)) return;
+            const r = await api('/api/admin/balance/revert', { method: 'POST', body: { id: e.id } });
+            bal.pending.clear();
+            toast('그 시점으로 맞췄어요.');
+            await renderBalance(view, r);
+          }) }, '이 시점으로 맞추기'))));
+    }
+    view.append(hist);
   }
 
   setTab('users');

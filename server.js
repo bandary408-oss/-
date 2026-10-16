@@ -19,14 +19,15 @@ const http = require('http');
 const multer = require('multer');
 const sharp = require('sharp');
 const { Server } = require('socket.io');
-const { db, UPLOAD_DIR, GLOBAL_ID, SYSTEM_USER_ID } = require('./db');
+const { db, DATA_DIR, UPLOAD_DIR, GLOBAL_ID, SYSTEM_USER_ID } = require('./db');
 const E = require('./engine');
 const { createRuns } = require('./runs');
 const { createTown } = require('./town');
 const { createFeed } = require('./feed');
 const X = require('./economy');
+const { createBalance } = require('./balance');
 
-// ---- 게임 콘텐츠 (content/*.json 을 고치면 서버 재시작 때 반영) ----
+// ---- 게임 콘텐츠 (content/*.json 을 고치면 서버 재시작 때 반영, 숫자는 관리자 [밸런스] 탭에서 즉시 조정) ----
 const RULES = JSON.parse(fs.readFileSync(path.join(__dirname, 'content', 'rules.json'), 'utf8'));
 const QUESTS_FILE = process.env.QUESTS_FILE || path.join(__dirname, 'content', 'quests.json');
 const QUESTS = JSON.parse(fs.readFileSync(QUESTS_FILE, 'utf8')).quests || [];
@@ -34,6 +35,16 @@ const ECONOMY_FILE = process.env.ECONOMY_FILE || path.join(__dirname, 'content',
 const ECO = JSON.parse(fs.readFileSync(ECONOMY_FILE, 'utf8'));
 E.validateContent(RULES, { quests: QUESTS }); // 오류가 있으면 한국어 메시지와 함께 여기서 멈춤
 X.validateEconomy(ECO, RULES, { quests: QUESTS });
+// 스킬 설명의 {shieldReduce}, {dice} 같은 칸을 현재 수치로 채움 (밸런스 조정 때마다 다시 채움)
+const SKILL_DESC_TEMPLATES = Object.fromEntries(Object.entries(RULES.classes).map(([k, c]) => [k, c.skill.desc]));
+function fillSkillDescs() {
+  for (const [k, c] of Object.entries(RULES.classes)) {
+    c.skill.desc = String(SKILL_DESC_TEMPLATES[k] || '').replace(/\{(\w+)\}/g, (m, key) => {
+      const v = c.skill[key] !== undefined ? c.skill[key] : (RULES.combat || {})[key];
+      return v !== undefined ? String(v) : m;
+    });
+  }
+}
 
 // ---- 설정 ----
 const PORT = Number(process.env.PORT || 3000);
@@ -46,8 +57,24 @@ const CLASSES = Object.keys(RULES.classes);
 const LIMITS = { name: [2, 12], title: 40, bio: 2000, appearance: 500, chat: 500, threadTitle: 60, post: 280 };
 const HISTORY_SIZE = 50;
 const THREAD_LIMIT_PER_HOUR = 3; // 일반 유저가 한 시간에 만들 수 있는 스레드 수
-const ROUND_DEADLINE_SEC = Number(process.env.ROUND_DEADLINE_SEC || RULES.round.deadlineSec);
-const ROUND_MIN_SEC = Number(process.env.ROUND_MIN_SEC !== undefined ? process.env.ROUND_MIN_SEC : RULES.round.minSec);
+// 라운드 시간: 환경변수가 있으면 그게 우선, 없으면 rules.round (밸런스 조정 시 갱신)
+const ROUND = {};
+function refreshRound() {
+  ROUND.deadlineSec = Number(process.env.ROUND_DEADLINE_SEC || RULES.round.deadlineSec);
+  ROUND.minSec = Number(process.env.ROUND_MIN_SEC !== undefined ? process.env.ROUND_MIN_SEC : RULES.round.minSec);
+}
+
+// 관리자 밸런스 조정값(DATA_DIR/balance.json)을 원본 위에 덮어씀
+const balance = createBalance({
+  dataDir: DATA_DIR,
+  base: { rules: RULES, quests: { quests: QUESTS }, economy: ECO },
+  live: { rules: RULES, quests: { quests: QUESTS }, economy: ECO },
+  validate: (d) => { E.validateContent(d.rules, d.quests); X.validateEconomy(d.economy, d.rules, d.quests); },
+  onApply: () => { fillSkillDescs(); refreshRound(); },
+});
+fillSkillDescs();
+refreshRound();
+balance.init();
 
 // ---- 유틸 ----
 const now = () => Date.now();
@@ -217,7 +244,7 @@ function sheetWithGear(c) {
 // 클라이언트가 규칙을 그리는 데 필요한 정보 (스킬 설명, 스탯 이름 등)
 function gameInfo() {
   return {
-    statNames: RULES.statNames, statCap: RULES.statCap, minSec: ROUND_MIN_SEC, deadlineSec: ROUND_DEADLINE_SEC,
+    statNames: RULES.statNames, statCap: RULES.statCap, minSec: ROUND.minSec, deadlineSec: ROUND.deadlineSec,
     economy: town.defs(),
     classes: Object.fromEntries(Object.entries(RULES.classes).map(([k, c]) => [k, { base: c.base, attackStat: c.attackStat, weapon: c.weapon, skill: c.skill }])),
   };
@@ -534,7 +561,7 @@ const runs = createRuns({
   town, post: feed.systemPost,
   db, rules: RULES, quests: QUESTS, auth, now, io: () => io, emitToUser, say: systemSay, upsertRead,
   cleanText, questsChannelId: () => db.prepare("SELECT id FROM threads WHERE slug = 'quests'").get().id,
-  config: { deadlineSec: ROUND_DEADLINE_SEC, minSec: ROUND_MIN_SEC },
+  config: ROUND,
 });
 app.use('/api', runs.router);
 
@@ -685,6 +712,25 @@ admin.post('/channels', (req, res) => {
     .run(title, req.user.id, now(), pos);
   io.emit('threads:changed');
   res.json({ ok: true, id: Number(info.lastInsertRowid) });
+});
+// 밸런스 조정 (숫자·주사위·난이도). 검증 통과 시 즉시 반영, 이력은 DATA_DIR/balance.json
+const balanceDo = (fn) => (req, res) => {
+  try {
+    const r = fn(req);
+    if (r.changed) console.log(`[밸런스] ${req.user.username} 님이 ${r.changed}개 값을 바꿈`);
+    res.json({ ok: true, ...r, ...balance.view() });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+};
+admin.get('/balance', (req, res) => res.json(balance.view()));
+admin.post('/balance', balanceDo((req) => balance.update((req.body || {}).changes, { by: req.user.username, note: (req.body || {}).note })));
+admin.post('/balance/revert', balanceDo((req) => {
+  const b = req.body || {};
+  return b.mode === 'before' ? balance.revertBefore(b.id, { by: req.user.username }) : balance.revert(b.id, { by: req.user.username });
+}));
+admin.post('/balance/reset', balanceDo((req) => balance.reset({ by: req.user.username })));
+admin.get('/balance/export', (req, res) => {
+  res.setHeader('Content-Disposition', 'attachment; filename="balance-content.json"');
+  res.json(balance.effective());
 });
 feed.registerAdmin(admin);
 app.use('/api/admin', admin);

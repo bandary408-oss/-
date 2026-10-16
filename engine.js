@@ -49,6 +49,7 @@ function validateContent(rules, questsDoc) {
     if (!isDice(c.weapon)) bad(`클래스 "${name}" 의 weapon 은 d6 같은 주사위 표기여야 합니다.`);
     if (!c.skill || !SKILL_IDS.includes(c.skill.id)) bad(`클래스 "${name}" 의 skill.id 는 ${SKILL_IDS.join('/')} 중 하나여야 합니다.`);
     else if (!Number.isInteger(c.skill.cooldown) || c.skill.cooldown < 0) bad(`클래스 "${name}" 의 skill.cooldown 이 올바르지 않습니다.`);
+    if (c.skill && c.skill.dice !== undefined && !isDice(c.skill.dice)) bad(`클래스 "${name}" 의 skill.dice 는 d6 같은 주사위 표기여야 합니다.`);
   }
 
   const lv = rules.level || {};
@@ -98,6 +99,7 @@ function validateContent(rules, questsDoc) {
       if (!e.id || eids.has(e.id)) bad(`${where}: 적 id 가 비었거나 중복됩니다. (${e.id})`);
       eids.add(e.id);
       for (const k of ['hp', 'ac', 'attackBonus']) if (!Number.isInteger(e[k])) bad(`${where}/${e.id}: ${k} 가 정수가 아닙니다.`);
+      if (Number.isInteger(e.hp) && e.hp < 1) bad(`${where}/${e.id}: hp 는 1 이상이어야 합니다.`);
       if (!Array.isArray(e.intents) || !e.intents.length) bad(`${where}/${e.id}: intents 가 비어 있습니다.`);
       (e.intents || []).forEach((it, i) => {
         if (it.type !== 'strike' && it.type !== 'guard') bad(`${where}/${e.id}: intents[${i}].type 은 strike 또는 guard 여야 합니다.`);
@@ -292,14 +294,14 @@ function resolveRound({ rules, state, actions = {}, cheers = {}, rng, ambush = f
           case 'backstab': attack(C.backstabBonus, '급소 찌르기'); break;
           case 'fireball':
             for (const e of aliveEnemies()) {
-              const dmg = Math.max(1, rollDice(rng, 'd6') + sb + cheer);
+              const dmg = Math.max(1, rollDice(rng, cls.skill.dice || 'd6') + sb + cheer);
               e.hp = Math.max(0, e.hp - dmg);
               ctx.lines.push(`🔥 ${p.name} ${narr}화염구 → ${e.name}: ${dmg} 피해 (굴림 없이 명중)${cheerNote}`);
             }
             break;
           case 'heal': {
             const t = findAlly(a.targetUserId, p);
-            const amt = Math.max(1, rollDice(rng, 'd8') + sb + cheer);
+            const amt = Math.max(1, rollDice(rng, cls.skill.dice || 'd8') + sb + cheer);
             const real = Math.min(amt, t.maxHp - t.hp);
             t.hp += real;
             ctx.lines.push(`✨ ${p.name} ${narr}치유 → ${t.name}: HP +${real}${cheerNote}`);
