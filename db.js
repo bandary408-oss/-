@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS runs (
   quest_id       TEXT NOT NULL,
   thread_id      INTEGER NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
   owner_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  phase          TEXT NOT NULL,                 -- investigation / combat / won / lost / abandoned
+  phase          TEXT NOT NULL,                 -- recruiting(모집 중) / investigation / combat / won / lost / abandoned / cancelled(모집 취소)
   state          TEXT NOT NULL DEFAULT '{}',    -- 조사·전투 상태 (JSON)
   round_started  INTEGER NOT NULL DEFAULT 0,    -- 현재 라운드 시작 시각 (ms)
   deadline       INTEGER NOT NULL DEFAULT 0,    -- 라운드 마감 시각 (ms), 0이면 없음
@@ -196,6 +196,9 @@ CREATE TABLE IF NOT EXISTS user_clues (
   PRIMARY KEY (user_id, clue)
 );
 `);
+
+// ---- 5단계: 파티·레이드 (레이드 주간 보상 판단용 마지막 클리어 시각) ----
+addColumn('quest_clears', 'last_at', 'INTEGER NOT NULL DEFAULT 0');
 
 // ---- 4단계: 골드·스태미나, 인벤토리, 장비, 선물, 마을 채널 ----
 addColumn('characters', 'gold', 'INTEGER NOT NULL DEFAULT 100');

@@ -63,5 +63,8 @@
 
   "cheer": { "perCheer": 1, "maxPerTarget": 2 },
 
+  "_party설명": "파티·레이드: 적 HP = 기본 HP × (1 + hpScalePerPlayer × (인원-1)). koXpRatio = 이겼지만 전투불능이었던 사람의 경험치 배율.",
+  "party": { "hpScalePerPlayer": 0.6, "koXpRatio": 0.5 },
+
   "repeatXpRatio": 0.25
 }

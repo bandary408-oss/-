@@ -6,6 +6,9 @@ const STATS = ['str', 'dex', 'int', 'cha'];
 const SKILL_IDS = ['shield', 'backstab', 'fireball', 'heal'];
 const EFFECT_TYPES = ['enemy_ac', 'attack_bonus', 'alert'];
 const TARGET_RULES = ['lowest_hp', 'highest_hp', 'random', 'all'];
+const MODES = ['solo', 'party', 'raid'];
+// 모드별 기본 인원 (quests.json 에서 minPlayers/maxPlayers 로 바꿀 수 있음. 레이드는 최대 인원 제한 없음)
+const MODE_DEFAULTS = { solo: { min: 1, max: 1 }, party: { min: 2, max: 4 }, raid: { min: 3, max: null } };
 
 // ---------- 난수 ----------
 function mulberry32(seed) {
@@ -52,6 +55,10 @@ function validateContent(rules, questsDoc) {
     if (c.skill && c.skill.dice !== undefined && !isDice(c.skill.dice)) bad(`클래스 "${name}" 의 skill.dice 는 d6 같은 주사위 표기여야 합니다.`);
   }
 
+  const pt = rules.party || {};
+  if (typeof pt.hpScalePerPlayer !== 'number' || pt.hpScalePerPlayer < 0) bad('rules.party.hpScalePerPlayer 는 0 이상의 숫자여야 합니다.');
+  if (typeof pt.koXpRatio !== 'number' || pt.koXpRatio < 0 || pt.koXpRatio > 1) bad('rules.party.koXpRatio 는 0~1 사이 숫자여야 합니다.');
+
   const lv = rules.level || {};
   if (!Array.isArray(lv.xp) || lv.xp.length !== lv.max || lv.xp[0] !== 0 || lv.xp.some((v, i) => i && v <= lv.xp[i - 1])) {
     bad('rules.level.xp 는 0 으로 시작하고 점점 커지는 숫자 배열이며, 길이가 level.max 와 같아야 합니다.');
@@ -76,7 +83,12 @@ function validateContent(rules, questsDoc) {
     if (ids.has(q.id)) bad(`${where}: id 가 중복됩니다.`);
     ids.add(q.id);
     if (typeof q.title !== 'string' || !q.title) bad(`${where}: title 이 없습니다.`);
-    if (q.mode !== 'solo') bad(`${where}: 지금은 mode 가 "solo" 인 의뢰만 지원합니다. (파티·레이드는 5단계)`);
+    if (!MODES.includes(q.mode)) bad(`${where}: mode 는 ${MODES.join('/')} 중 하나여야 합니다.`);
+    else {
+      const pc = partySize(q);
+      if (!Number.isInteger(pc.min) || pc.min < 1) bad(`${where}: minPlayers 는 1 이상의 정수여야 합니다.`);
+      if (pc.max !== null && (!Number.isInteger(pc.max) || pc.max < pc.min)) bad(`${where}: maxPlayers 는 minPlayers 이상의 정수여야 합니다.`);
+    }
     if (!q.reward || !Number.isInteger(q.reward.xp)) bad(`${where}: reward.xp 가 정수가 아닙니다.`);
     if (q.investigation) {
       const cids = new Set();
@@ -101,7 +113,12 @@ function validateContent(rules, questsDoc) {
       for (const k of ['hp', 'ac', 'attackBonus']) if (!Number.isInteger(e[k])) bad(`${where}/${e.id}: ${k} 가 정수가 아닙니다.`);
       if (Number.isInteger(e.hp) && e.hp < 1) bad(`${where}/${e.id}: hp 는 1 이상이어야 합니다.`);
       if (!Array.isArray(e.intents) || !e.intents.length) bad(`${where}/${e.id}: intents 가 비어 있습니다.`);
-      (e.intents || []).forEach((it, i) => {
+      const p2 = e.phase2;
+      if (p2 !== undefined) {
+        if (!p2 || typeof p2.at !== 'number' || p2.at <= 0 || p2.at >= 1) bad(`${where}/${e.id}: phase2.at 은 0~1 사이 숫자여야 합니다. (예: 0.5 = HP 절반)`);
+        if (!p2 || !Array.isArray(p2.intents) || !p2.intents.length) bad(`${where}/${e.id}: phase2.intents 가 비어 있습니다.`);
+      }
+      [...(e.intents || []), ...((p2 && Array.isArray(p2.intents)) ? p2.intents : [])].forEach((it, i) => {
         if (it.type !== 'strike' && it.type !== 'guard') bad(`${where}/${e.id}: intents[${i}].type 은 strike 또는 guard 여야 합니다.`);
         if (typeof it.label !== 'string') bad(`${where}/${e.id}: intents[${i}].label 이 없습니다.`);
         if (it.type === 'strike') {
@@ -159,13 +176,30 @@ const checkLabel = (r) => (r.crit ? '대성공' : r.fumble ? '대실패' : r.suc
 // ---------- 전투 ----------
 const intentFor = (enemy, round) => enemy.intents[(round - 1) % enemy.intents.length];
 
-function makeCombatState({ quest, players, mods }) {
+// 의뢰의 인원 제한 { min, max }  (max 가 null 이면 제한 없음)
+function partySize(quest) {
+  const d = MODE_DEFAULTS[quest.mode] || MODE_DEFAULTS.solo;
+  return {
+    min: quest.minPlayers !== undefined ? quest.minPlayers : d.min,
+    max: quest.mode === 'solo' ? 1 : (quest.maxPlayers !== undefined ? quest.maxPlayers : d.max),
+  };
+}
+// 인원수에 맞춘 적 HP: 기본 HP × (1 + 배율 × (인원 - 1))
+function scaledHp(rules, hp, count) {
+  const per = (rules && rules.party && rules.party.hpScalePerPlayer) || 0;
+  return Math.max(1, Math.round(hp * (1 + per * Math.max(0, count - 1))));
+}
+
+function makeCombatState({ quest, players, mods, rules }) {
   return {
     round: 1,
     players: players.map((p) => ({ ...p, status: 'active', cd: 0 })),
-    enemies: quest.combat.enemies.map((e) => ({
-      id: e.id, name: e.name, hp: e.hp, maxHp: e.hp, ac: e.ac, attackBonus: e.attackBonus, intents: e.intents,
-    })),
+    enemies: quest.combat.enemies.map((e) => {
+      const hp = scaledHp(rules, e.hp, players.length);
+      const out = { id: e.id, name: e.name, hp, maxHp: hp, ac: e.ac, attackBonus: e.attackBonus, intents: e.intents };
+      if (e.phase2) out.phase2 = { at: e.phase2.at, text: e.phase2.text || '', intents: e.phase2.intents, on: false };
+      return out;
+    }),
     mods: { enemyAc: (mods && mods.enemyAc) || 0, attackBonus: (mods && mods.attackBonus) || 0 },
   };
 }
@@ -256,6 +290,7 @@ function resolveRound({ rules, state, actions = {}, cheers = {}, rng, ambush = f
   if (!ambush) {
     for (const p of s.players) {
       if (p.status !== 'active') continue;
+      if (!aliveEnemies().length) break; // 앞사람이 마지막 적을 쓰러뜨림 (파티·레이드)
       const cls = rules.classes[p.cls];
       const a = actions[p.userId] || { action: 'defend' };
       const cheer = Math.min(cheers[p.userId] || 0, rules.cheer.maxPerTarget) * rules.cheer.perCheer;
@@ -320,6 +355,7 @@ function resolveRound({ rules, state, actions = {}, cheers = {}, rng, ambush = f
   }
 
   const koUsers = enemyPhase(s, rules, rng, ctx);
+  const phaseLines = enterPhase2(s);
   const anyActive = s.players.some((p) => p.status === 'active');
   const outcome = anyActive ? 'continue' : 'defeat';
 
@@ -328,11 +364,24 @@ function resolveRound({ rules, state, actions = {}, cheers = {}, rng, ambush = f
     if (outcome === 'continue') s.round += 1;
   }
   const title = ambush ? '기습 결과' : `${state.round}라운드 결과`;
-  return { state: s, rollLines: ctx.lines, summary: buildSummary(title, before, s, outcome), outcome, koUsers };
+  const summary = [...phaseLines, buildSummary(title, before, s, outcome)].join('\n');
+  return { state: s, rollLines: ctx.lines, summary, outcome, koUsers };
+}
+
+// 보스 2페이즈: HP 가 phase2.at 비율 이하로 떨어지면 다음 라운드부터 행동 패턴이 바뀐다.
+function enterPhase2(s) {
+  const lines = [];
+  for (const e of s.enemies) {
+    if (!e.phase2 || e.phase2.on || e.hp <= 0 || e.hp > e.maxHp * e.phase2.at) continue;
+    e.phase2.on = true;
+    e.intents = e.phase2.intents;
+    lines.push(`🔥 ${e.name} — 2페이즈! ${e.phase2.text}`.trim());
+  }
+  return lines;
 }
 
 module.exports = {
-  STATS, SKILL_IDS, mulberry32, secureRng, rollDie, rollDice, validateContent,
+  STATS, SKILL_IDS, MODES, partySize, scaledHp, mulberry32, secureRng, rollDie, rollDice, validateContent,
   statBonus, levelFromXp, maxHp, sheet, applyXp, check, checkLabel,
   intentFor, makeCombatState, describeIntents, resolveRound, signed,
 };

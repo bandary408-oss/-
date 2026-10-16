@@ -362,3 +362,11 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; }
 .bal-hist ul { margin: 4px 0; padding-left: 18px; }
 .bal-warn { white-space: pre-wrap; color: var(--danger); }
 .bal-error { white-space: pre-wrap; color: var(--danger); font-size: 13px; }
+/* 5단계: 파티·레이드 */
+.mode-tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 0 7px; border-radius: 99px; border: 1px solid var(--line); vertical-align: 1px; }
+.mode-tag.party { color: var(--accent); }
+.mode-tag.raid { color: var(--danger); border-color: #5a2d27; }
+.quest-card.recruiting .q-title { color: var(--accent); }
+.small-note { font-size: 12px; max-width: 120px; text-align: right; }
+.phase-tag.recruiting { color: var(--ok); border-color: #3d5632; }
+.phase-tag.cancelled { color: var(--danger); border-color: #5a2d27; }

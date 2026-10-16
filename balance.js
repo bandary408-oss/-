@@ -26,6 +26,8 @@ const KEY_LABELS = {
   announceRarity: '소식에 올릴 최소 등급', giftMaxGold: '선물 골드 최대',
   attack: '명중', spots: '채집', minLevel: '최소 레벨', cost: '체력 소모', nothing: '꽝', weight: '확률 가중치',
   drops: '나오는 것', recipes: '제작', inputs: '재료', jars: '도박항아리', price: '가격', prizes: '상품',
+  party: '파티·레이드', hpScalePerPlayer: '1명 늘 때 적 HP 증가 비율', koXpRatio: '전투불능 시 경험치 비율',
+  minPlayers: '최소 인원', maxPlayers: '최대 인원', phase2: '2페이즈', at: '시작 HP 비율',
 };
 // 이 값들은 0(또는 1) 미만으로 내릴 수 없어요
 const MIN_BY_KEY = { hp: 1, maxActions: 1, alertLimit: 1, max: 1, price: 1, critMultiplier: 1 };

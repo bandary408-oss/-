@@ -34,6 +34,10 @@ function unit() {
   check('적 HP·스킬 쿨타임·주사위·항아리 가격이 조정 목록에 있음',
     ['quests:quests/lost-cart/combat/enemies/boss/hp', 'rules:classes/전사/skill/cooldown', 'rules:classes/마법사/skill/dice',
       'economy:jars/old-jar/price', 'economy:spots/forest-edge/drops/0/weight'].every((k) => keys.has(k)));
+  check('파티·레이드 수치(인원, HP 배율, 보스 2페이즈)도 목록에 있음',
+    ['rules:party/hpScalePerPlayer', 'rules:party/koXpRatio', 'quests:quests/black-moon-warehouse/maxPlayers',
+      'quests:quests/moon-serpent/minPlayers', 'quests:quests/moon-serpent/combat/enemies/serpent/phase2/at'].every((k) => keys.has(k)));
+  check('2페이즈 시작 비율 1 은 규칙 검사로 거부', /phase2\.at/.test(throws(() => b.update({ 'quests:quests/moon-serpent/combat/enemies/serpent/phase2/at': 1 }))));
   check('설명 문구(_설명)·이름은 목록에 없음', ![...keys].some((k) => k.includes('_설명') || k.endsWith('/name')));
   check('조사 선택지 난이도는 고르기 칸', v.fields.find((f) => f.key.endsWith('choices/tracks/difficulty')).kind === 'choice');
 
