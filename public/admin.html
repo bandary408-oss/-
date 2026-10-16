@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>관리자 - 블랙리스트 용병단</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="admin-wrap">
+    <div style="display:flex;align-items:center;gap:10px">
+      <h1>관리자 페이지</h1>
+      <div class="spacer"></div>
+      <a class="btn small" href="/">게임으로 돌아가기</a>
+    </div>
+
+    <div class="admin-tabs">
+      <button class="btn small" data-tab="users" type="button">유저</button>
+      <button class="btn small" data-tab="posts" type="button">타임라인 글</button>
+      <button class="btn small" data-tab="threads" type="button">의뢰방·스레드</button>
+      <button class="btn small" data-tab="reports" type="button">신고 <span id="reportCount"></span></button>
+      <button class="btn small" data-tab="invites" type="button">초대코드</button>
+    </div>
+
+    <div id="view"></div>
+  </div>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="/admin.js"></script>
+</body>
+</html>

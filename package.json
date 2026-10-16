@@ -1,0 +1,29 @@
+{
+  "name": "mercenary-guild-game",
+  "version": "0.1.0",
+  "description": "용병단 자캐커뮤 - 1단계 뼈대 (로그인, 프로필, 채팅, 관리자)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/engine.test.js && node test/economy.test.js && node test/smoke.js && node test/feed.test.js && node test/quest.test.js && node test/town.test.js",
+    "test:engine": "node test/engine.test.js",
+    "test:quest": "node test/quest.test.js",
+    "sim": "node tools/simulate.js",
+    "test:town": "node test/town.test.js",
+    "test:economy": "node test/economy.test.js",
+    "test:feed": "node test/feed.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.5.0",
+    "express": "^4.21.0",
+    "multer": "^1.4.5-lts.1",
+    "sharp": "^0.35.5",
+    "socket.io": "^4.8.0"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.0"
+  }
+}

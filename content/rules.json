@@ -1,0 +1,67 @@
+{
+  "_설명": "게임 규칙 수치입니다. 숫자만 바꾸면 서버를 다시 시작할 때 반영돼요. (구조를 바꾸려면 개발이 필요해요)",
+
+  "statNames": { "str": "힘", "dex": "민첩", "int": "지능", "cha": "매력" },
+  "statCap": 4,
+
+  "classes": {
+    "전사": {
+      "base": { "str": 3, "dex": 1, "int": 0, "cha": 1 },
+      "attackStat": "str",
+      "weapon": "d8",
+      "skill": { "id": "shield", "name": "방패막기", "cooldown": 3, "target": "ally",
+                 "desc": "아군 1명(자신 포함)이 이번 라운드에 받는 피해를 6 줄인다." }
+    },
+    "도적": {
+      "base": { "str": 1, "dex": 3, "int": 1, "cha": 0 },
+      "attackStat": "dex",
+      "weapon": "d6",
+      "skill": { "id": "backstab", "name": "급소 찌르기", "cooldown": 3, "target": "enemy",
+                 "desc": "이번 공격의 명중 굴림에 +4." }
+    },
+    "마법사": {
+      "base": { "str": 0, "dex": 1, "int": 3, "cha": 1 },
+      "attackStat": "int",
+      "weapon": "d6",
+      "skill": { "id": "fireball", "name": "화염구", "cooldown": 3, "target": "none",
+                 "desc": "모든 적에게 d6+지능 피해. 굴림 없이 명중한다." }
+    },
+    "성직자": {
+      "base": { "str": 1, "dex": 0, "int": 1, "cha": 3 },
+      "attackStat": "cha",
+      "weapon": "d6",
+      "skill": { "id": "heal", "name": "치유", "cooldown": 3, "target": "ally",
+                 "desc": "아군 1명(자신 포함)의 HP를 d8+매력만큼 회복한다." }
+    }
+  },
+
+  "level": {
+    "max": 5,
+    "xp": [0, 30, 80, 150, 250],
+    "hpBase": 20,
+    "hpPerLevel": 5
+  },
+
+  "difficulty": {
+    "easy":   { "dc": 10, "label": "쉬움" },
+    "normal": { "dc": 14, "label": "보통" },
+    "hard":   { "dc": 18, "label": "어려움" }
+  },
+
+  "combat": {
+    "baseAc": 10,
+    "defendAc": 3,
+    "guardAc": 3,
+    "shieldReduce": 6,
+    "backstabBonus": 4,
+    "critMultiplier": 2
+  },
+
+  "investigation": { "maxActions": 3, "alertLimit": 3 },
+
+  "round": { "deadlineSec": 90, "minSec": 10 },
+
+  "cheer": { "perCheer": 1, "maxPerTarget": 2 },
+
+  "repeatXpRatio": 0.25
+}

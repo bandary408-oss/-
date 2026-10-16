@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>블랙리스트 용병단</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body data-tab="home">
+
+  <!-- 로그인 / 가입 -->
+  <div id="auth" class="auth-wrap" hidden>
+    <div class="auth-card">
+      <h1 class="logo">블랙리스트 용병단</h1>
+      <p class="tagline">신용을 잃은 용병단이 맨땅에서 다시 시작한다.</p>
+
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab active" data-form="login">로그인</button>
+        <button type="button" class="tab" data-form="register">가입</button>
+      </div>
+
+      <form id="loginForm" class="form" autocomplete="on">
+        <label>아이디<input name="username" autocomplete="username" required></label>
+        <label>비밀번호<input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="btn primary" type="submit">입장하기</button>
+      </form>
+
+      <form id="registerForm" class="form" autocomplete="on" hidden>
+        <label>초대코드<input name="inviteCode" placeholder="XXXX-XXXX" autocapitalize="characters" required></label>
+        <label>아이디 <small>(영문/숫자/밑줄 3~16자)</small><input name="username" autocomplete="username" required></label>
+        <label>비밀번호 <small>(8자 이상)</small><input name="password" type="password" autocomplete="new-password" required></label>
+        <label>캐릭터 이름 <small>(2~12자, 나중에 바꿀 수 있어요)</small><input name="charName" required maxlength="12"></label>
+        <button class="btn primary" type="submit">용병단 가입</button>
+      </form>
+
+      <p id="authError" class="error" role="alert"></p>
+    </div>
+  </div>
+
+  <!-- 게임 화면 -->
+  <div id="game" class="game" hidden>
+    <header class="topbar">
+      <div class="brand">⚔ 블랙리스트 용병단</div>
+      <div class="spacer"></div>
+      <span id="connState" class="conn off" title="연결 상태">연결 중…</span>
+      <a id="adminLink" class="btn small" href="/admin.html" hidden>관리자</a>
+      <button id="logoutBtn" class="btn small" type="button">로그아웃</button>
+    </header>
+
+    <main class="layout">
+      <aside id="paneNav" class="pane pane-nav">
+        <nav class="side-nav" aria-label="메뉴">
+          <button type="button" data-view="home" class="active">🏠 타임라인</button>
+          <button type="button" data-view="quests">⚔ 의뢰</button>
+          <button type="button" data-view="town">🏘 마을 장터</button>
+          <button type="button" data-view="notif">🔔 알림 <span class="unread-badge notif-badge" hidden></span></button>
+        </nav>
+        <div id="trendBox" class="trend-box" hidden></div>
+        <h2>용병단원 <span id="onlineCount" class="muted"></span></h2>
+        <ul id="rosterList" class="roster"></ul>
+      </aside>
+
+      <section id="paneMain" class="pane pane-main">
+        <!-- 타임라인 -->
+        <div id="viewHome" class="view">
+          <div class="view-head">
+            <button id="homeBack" class="btn small ghost" type="button" hidden>‹ 타임라인</button>
+            <h2 id="homeTitle">타임라인</h2>
+            <button id="peopleBtn" class="btn small ghost mobile-only" type="button">👥 단원</button>
+            <button id="tagClear" class="btn small ghost" type="button" hidden>태그 해제 ✕</button>
+          </div>
+          <div id="homeScroll" class="view-scroll">
+            <div id="feedView">
+              <form id="composeForm" class="compose">
+                <textarea id="composeText" maxlength="280" rows="3" placeholder="지금 무슨 일이 일어나고 있나요? (280자, @이름 으로 부르고 #태그 를 달 수 있어요)"></textarea>
+                <div class="compose-bar">
+                  <select id="composeKind" aria-label="말투"><option value="say">대사</option><option value="act">지문</option></select>
+                  <span id="composeCount" class="muted">0 / 280</span>
+                  <button class="btn primary" type="submit">올리기</button>
+                </div>
+              </form>
+              <button id="newPostsBtn" class="btn small new-posts" type="button" hidden></button>
+              <div id="feedList"></div>
+              <button id="feedMore" class="btn small ghost" type="button" hidden>더 보기</button>
+            </div>
+            <div id="detailView" hidden></div>
+          </div>
+        </div>
+
+        <!-- 의뢰 -->
+        <div id="viewQuests" class="view" hidden>
+          <div class="view-head"><h2>의뢰</h2></div>
+          <div class="view-scroll">
+            <div id="questBoard" class="quest-board"></div>
+            <div id="activeRuns" class="quest-board"></div>
+          </div>
+        </div>
+
+        <!-- 의뢰 방: 조사·전투 + 실시간 채팅 -->
+        <div id="viewRoom" class="view" hidden>
+          <div class="chat-head">
+            <button id="roomBack" class="btn small ghost" type="button">‹ 의뢰</button>
+            <div class="chat-title">
+              <h2 id="chatTitle">의뢰 방</h2>
+              <div id="chatSub" class="muted"></div>
+            </div>
+          </div>
+          <div id="runPanel" class="run-panel" hidden></div>
+          <div id="messages" class="messages" aria-live="polite">
+            <button id="loadOlder" class="btn small ghost" type="button" hidden>이전 대화 더 보기</button>
+            <div id="messageList"></div>
+          </div>
+          <form id="composer" class="composer">
+            <select id="kindSelect" aria-label="말투">
+              <option value="say">대사</option>
+              <option value="act">지문</option>
+            </select>
+            <input id="chatInput" maxlength="500" placeholder="대사를 입력하세요" autocomplete="off">
+            <button class="btn primary" type="submit">전송</button>
+          </form>
+        </div>
+
+        <!-- 마을 장터 -->
+        <div id="viewTown" class="view" hidden>
+          <div class="view-head"><h2>마을 장터</h2></div>
+          <div class="view-scroll"><div id="townPanel" class="quest-board town-panel"></div></div>
+        </div>
+
+        <!-- 알림 -->
+        <div id="viewNotif" class="view" hidden>
+          <div class="view-head"><h2>알림</h2></div>
+          <div id="notifList" class="view-scroll"></div>
+        </div>
+      </section>
+
+      <aside id="paneProfile" class="pane pane-profile">
+        <div id="profileView"></div>
+      </aside>
+    </main>
+
+    <nav class="tabbar">
+      <button type="button" data-tab="home" class="active">타임라인</button>
+      <button type="button" data-tab="quests">의뢰</button>
+      <button type="button" data-tab="town">장터</button>
+      <button type="button" data-tab="notif">알림 <span class="unread-badge notif-badge" hidden></span></button>
+      <button type="button" data-tab="profile">프로필</button>
+    </nav>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

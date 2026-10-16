@@ -1,0 +1,123 @@
+{
+  "_설명": "경제·파밍·제작·도박항아리 데이터입니다. items 에 물건을 정의하고, spots(채집 장소)/recipes(제작법)/jars(도박항아리)에서 item id 로 가져다 씁니다. 숫자와 글만 고치면 서버 재시작 때 반영되고, 틀린 id 가 있으면 한국어로 알려줘요.",
+
+  "settings": {
+    "startGold": 100,
+    "staminaMax": 8,
+    "staminaRegenMin": 6,
+    "announceRarity": "rare",
+    "giftMaxGold": 5000
+  },
+
+  "slots": { "weapon": "무기", "armor": "방어구", "trinket": "장신구" },
+  "rarities": { "common": "일반", "uncommon": "고급", "rare": "희귀", "epic": "영웅" },
+
+  "items": {
+    "rusty-nail":    { "name": "녹슨 못",           "type": "junk", "rarity": "common",   "value": 2,  "desc": "어디에 쓰는지 모르겠지만 어쨌든 못이다." },
+    "broken-bottle": { "name": "깨진 병",           "type": "junk", "rarity": "common",   "value": 1,  "desc": "손조심." },
+    "torn-cloth":    { "name": "찢어진 천",         "type": "material", "rarity": "common", "value": 2, "desc": "붕대로도, 걸레로도 애매하다." },
+    "broken-arrow":  { "name": "부러진 화살",       "type": "junk", "rarity": "common",   "value": 2,  "desc": "누가 쏜 걸까." },
+    "leather-cord":  { "name": "낡은 가죽끈",       "type": "material", "rarity": "common", "value": 3, "desc": "아직 쓸 만하다." },
+    "comb":          { "name": "이빨 빠진 빗",      "type": "junk", "rarity": "common",   "value": 3,  "desc": "주인의 머리숱이 궁금해진다." },
+    "crow-feather":  { "name": "까마귀 깃털",       "type": "material", "rarity": "common", "value": 4, "desc": "윤기가 흐르는 검은 깃털." },
+    "herb":          { "name": "약초",              "type": "material", "rarity": "common",   "value": 5,  "desc": "쌉싸름한 향이 난다." },
+    "toadstool":     { "name": "독버섯",            "type": "junk", "rarity": "common",   "value": 6,  "desc": "먹지 마세요." },
+    "iron-scrap":    { "name": "철 조각",           "type": "material", "rarity": "uncommon", "value": 8, "desc": "대장간에서 환영받는 재료." },
+    "hardleather":   { "name": "질긴 가죽",         "type": "material", "rarity": "uncommon", "value": 10, "desc": "두껍고 질기다." },
+    "moon-dew":      { "name": "달빛 이슬",         "type": "material", "rarity": "rare",     "value": 15, "desc": "달빛 아래서만 맺히는 맑은 물방울." },
+    "spirit-dust":   { "name": "정령석 가루",       "type": "material", "rarity": "rare",     "value": 25, "desc": "손끝이 저릿하다." },
+    "mana-crystal":  { "name": "마력 결정",         "type": "material", "rarity": "epic",     "value": 40, "desc": "가만히 두면 은은히 빛난다." },
+
+    "steel-sword":   { "name": "단련된 철검",       "type": "equipment", "slot": "weapon",  "rarity": "uncommon", "value": 30, "bonus": { "attack": 1 }, "desc": "명중 굴림 +1" },
+    "silver-dagger": { "name": "은 도금 단검",      "type": "equipment", "slot": "weapon",  "rarity": "rare",     "value": 45, "bonus": { "attack": 1, "hp": 2 }, "desc": "명중 +1, 최대 HP +2" },
+    "mana-staff":    { "name": "마력이 깃든 지팡이", "type": "equipment", "slot": "weapon",  "rarity": "epic",     "value": 90, "bonus": { "attack": 2 }, "desc": "명중 굴림 +2" },
+    "quilted-vest":  { "name": "누비 가죽옷",       "type": "equipment", "slot": "armor",   "rarity": "uncommon", "value": 20, "bonus": { "ac": 1 }, "desc": "방어도 +1" },
+    "iron-cuirass":  { "name": "철 흉갑",           "type": "equipment", "slot": "armor",   "rarity": "rare",     "value": 60, "bonus": { "ac": 2 }, "desc": "방어도 +2" },
+    "rabbit-foot":   { "name": "행운의 토끼발",     "type": "equipment", "slot": "trinket", "rarity": "uncommon", "value": 18, "bonus": { "hp": 3 }, "desc": "최대 HP +3" },
+    "merc-seal":     { "name": "용병단 인장",       "type": "equipment", "slot": "trinket", "rarity": "epic",     "value": 80, "bonus": { "hp": 5, "ac": 1 }, "desc": "최대 HP +5, 방어도 +1. 한때 이름값이 있었던 물건." }
+  },
+
+  "spots": [
+    {
+      "id": "forest-edge", "name": "숲 가장자리", "minLevel": 1, "cost": 1,
+      "desc": "마을 뒤편 숲. 약초와 잡동사니가 굴러다닌다.",
+      "nothing": { "weight": 14, "texts": ["덤불만 한참 헤집었다. 건진 건 없다.", "다람쥐가 먼저 다 주워갔다."] },
+      "drops": [
+        { "item": "herb", "weight": 28, "qty": [1, 2] },
+        { "item": "toadstool", "weight": 14 },
+        { "item": "broken-arrow", "weight": 14 },
+        { "item": "torn-cloth", "weight": 12 },
+        { "item": "crow-feather", "weight": 10 },
+        { "item": "leather-cord", "weight": 6 },
+        { "item": "moon-dew", "weight": 2 }
+      ]
+    },
+    {
+      "id": "riverside", "name": "강가", "minLevel": 1, "cost": 1,
+      "desc": "물살에 떠밀려온 것들이 모이는 곳.",
+      "nothing": { "weight": 14, "texts": ["물만 잔뜩 마셨다.", "미끄러져 엉덩방아를 찧었다."] },
+      "drops": [
+        { "item": "broken-bottle", "weight": 24 },
+        { "item": "rusty-nail", "weight": 18 },
+        { "item": "comb", "weight": 14 },
+        { "item": "leather-cord", "weight": 12 },
+        { "item": "torn-cloth", "weight": 10 },
+        { "item": "herb", "weight": 8 },
+        { "item": "moon-dew", "weight": 3 }
+      ]
+    },
+    {
+      "id": "old-mine", "name": "폐광 입구", "minLevel": 2, "cost": 1,
+      "desc": "무너진 광산 입구. 철 조각이 나오지만 위험한 기운이 감돈다.",
+      "nothing": { "weight": 16, "texts": ["돌덩이만 걷어찼다.", "천장에서 먼지가 쏟아져 얼른 물러났다."] },
+      "drops": [
+        { "item": "iron-scrap", "weight": 30, "qty": [1, 2] },
+        { "item": "rusty-nail", "weight": 20 },
+        { "item": "hardleather", "weight": 10 },
+        { "item": "broken-bottle", "weight": 8 },
+        { "item": "spirit-dust", "weight": 5 },
+        { "item": "mana-crystal", "weight": 1 }
+      ]
+    }
+  ],
+
+  "recipes": [
+    { "id": "r-steel-sword", "name": "철검 단련", "output": "steel-sword", "inputs": { "iron-scrap": 3, "leather-cord": 1 }, "gold": 20, "stat": "str", "dc": 12 },
+    { "id": "r-quilted-vest", "name": "누비 가죽옷 재단", "output": "quilted-vest", "inputs": { "hardleather": 2, "torn-cloth": 2 }, "gold": 0, "stat": "dex", "dc": 10 },
+    { "id": "r-rabbit-foot", "name": "행운 부적 엮기", "output": "rabbit-foot", "inputs": { "crow-feather": 3, "leather-cord": 1, "herb": 1 }, "gold": 5, "stat": "cha", "dc": 11 },
+    { "id": "r-silver-dagger", "name": "은 도금 단검 제작", "output": "silver-dagger", "inputs": { "iron-scrap": 2, "moon-dew": 1 }, "gold": 30, "stat": "dex", "dc": 13 },
+    { "id": "r-iron-cuirass", "name": "철 흉갑 제작", "output": "iron-cuirass", "inputs": { "iron-scrap": 6, "hardleather": 2 }, "gold": 40, "stat": "str", "dc": 14 },
+    { "id": "r-mana-staff", "name": "마력 지팡이 제작", "output": "mana-staff", "inputs": { "spirit-dust": 3, "mana-crystal": 1, "leather-cord": 1 }, "gold": 60, "stat": "int", "dc": 16 }
+  ],
+
+  "jars": [
+    {
+      "id": "old-jar", "name": "낡은 항아리", "price": 15,
+      "desc": "먼지 쌓인 항아리. 뭐가 들었는지는 깨 봐야 안다.",
+      "prizes": [
+        { "gold": [10, 25], "weight": 14 },
+        { "item": "rusty-nail", "weight": 12 }, { "item": "broken-bottle", "weight": 12 }, { "item": "comb", "weight": 10 },
+        { "item": "herb", "weight": 12, "qty": [1, 2] }, { "item": "toadstool", "weight": 8 },
+        { "item": "iron-scrap", "weight": 9 }, { "item": "hardleather", "weight": 6 },
+        { "item": "moon-dew", "weight": 5 }, { "item": "spirit-dust", "weight": 3 },
+        { "item": "quilted-vest", "weight": 2 }, { "item": "rabbit-foot", "weight": 2 },
+        { "item": "steel-sword", "weight": 2 }, { "item": "silver-dagger", "weight": 1 },
+        { "gold": [120, 200], "weight": 2 }
+      ]
+    },
+    {
+      "id": "gilded-jar", "name": "도금 항아리", "price": 60,
+      "desc": "겉만 번지르르한 항아리. 가끔 진짜가 나온다는 소문.",
+      "prizes": [
+        { "gold": [40, 90], "weight": 18 },
+        { "item": "iron-scrap", "weight": 14, "qty": [1, 3] }, { "item": "hardleather", "weight": 12, "qty": [1, 2] },
+        { "item": "moon-dew", "weight": 10, "qty": [1, 2] }, { "item": "spirit-dust", "weight": 8 },
+        { "item": "mana-crystal", "weight": 4 },
+        { "item": "steel-sword", "weight": 5 }, { "item": "quilted-vest", "weight": 5 }, { "item": "rabbit-foot", "weight": 5 },
+        { "item": "silver-dagger", "weight": 4 }, { "item": "iron-cuirass", "weight": 3 },
+        { "item": "mana-staff", "weight": 1.2 }, { "item": "merc-seal", "weight": 1 },
+        { "gold": [400, 700], "weight": 2 }
+      ]
+    }
+  ]
+}

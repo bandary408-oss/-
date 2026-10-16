@@ -1,0 +1,62 @@
+{
+  "_설명": "의뢰 데이터입니다. 의뢰를 추가하려면 quests 배열에 같은 모양으로 항목을 추가하세요. stat 은 str/dex/int/cha, difficulty 는 easy/normal/hard 입니다.",
+
+  "quests": [
+    {
+      "id": "lost-cart",
+      "title": "사라진 짐수레",
+      "mode": "solo",
+      "recommendedLevel": 1,
+      "summary": "마을 상인의 짐수레가 숲길에서 사라졌다. 별것 아닌 의뢰처럼 보이지만, 바퀴 자국이 이상하다.",
+      "reward": { "xp": 40, "gold": 60, "items": [{ "id": "herb", "qty": 2 }] },
+      "intro": "📜 의뢰: 사라진 짐수레\n마을 상인 올프의 짐수레가 숲길에서 사라졌다. 사례금은 적지만, 블랙리스트에 오른 용병단이 이름을 되찾을 첫 의뢰다.",
+
+      "investigation": {
+        "intro": "🔎 조사 단계 — 행동 3번 안에 단서를 모으자. 실패하면 경계도가 오르고, 경계도가 3이 되면 도적들이 먼저 덮친다.",
+        "choices": [
+          {
+            "id": "tracks", "label": "바퀴 자국을 따라간다", "stat": "int", "difficulty": "normal",
+            "success": { "text": "자국은 숲 안쪽 폐오두막으로 이어진다. 오두막 뒤편에 우회로가 보인다.",
+                         "effect": { "type": "enemy_ac", "value": -2, "label": "적 방어도 -2 (전투 내내)" } },
+            "fail": { "text": "발자국이 뒤엉켜 방향을 놓쳤다. 숲 어딘가에서 인기척이 느껴진다." }
+          },
+          {
+            "id": "merchant", "label": "상인에게 다시 캐묻는다", "stat": "cha", "difficulty": "easy",
+            "success": { "text": "상인이 떨며 털어놓는다. 수레를 끈 건 도적 서넛, 두목은 왼팔을 다쳤다고.",
+                         "effect": { "type": "attack_bonus", "value": 1, "label": "명중 굴림 +1 (전투 내내)" } },
+            "fail": { "text": "상인이 말을 더듬으며 입을 다문다. 그의 눈이 숲 쪽을 힐끔 본다." }
+          },
+          {
+            "id": "search", "label": "숲길 주변을 수색한다", "stat": "dex", "difficulty": "normal",
+            "success": { "text": "나뭇가지에 걸린 천 조각을 찾았다. 매복 지점을 먼저 파악했다.",
+                         "effect": { "type": "alert", "value": -1, "label": "경계도 -1" } },
+            "fail": { "text": "마른 가지가 발밑에서 부러진다. 숲이 갑자기 조용해졌다." }
+          },
+          {
+            "id": "mark", "label": "수레 잔해의 문양을 살핀다", "stat": "int", "difficulty": "hard",
+            "success": { "text": "잔해에 검게 칠한 초승달 문양이 있다. 평범한 도적단의 표식이 아니다.",
+                         "clue": "black-moon", "clueLabel": "검은 초승달 문양" },
+            "fail": { "text": "문양이 진흙에 뭉개져 알아볼 수 없다." }
+          }
+        ]
+      },
+
+      "combat": {
+        "intro": "⚔ 숲 속 공터. 도적 두목이 짐수레를 뒤지다 고개를 든다.",
+        "ambushText": "💥 기습! 경계를 들킨 탓에 도적 두목이 먼저 움직였다.",
+        "enemies": [
+          {
+            "id": "boss", "name": "도적 두목", "hp": 26, "ac": 12, "attackBonus": 4,
+            "intents": [
+              { "type": "strike", "target": "lowest_hp", "dice": "d6", "bonus": 1, "label": "HP가 가장 낮은 자를 노린다" },
+              { "type": "strike", "target": "random", "dice": "d6", "bonus": 1, "label": "무작위로 한 명을 벤다" },
+              { "type": "guard", "label": "방어 태세를 취한다 (방어도 +3)" }
+            ]
+          }
+        ],
+        "victoryText": "도적 두목이 무릎을 꿇었다. 수레는 무사하다. 짐 틈에서 낯선 문양이 찍힌 서신 한 장이 나온다…",
+        "defeatText": "시야가 흐려진다. 도적들의 웃음소리가 멀어진다…"
+      }
+    }
+  ]
+}
