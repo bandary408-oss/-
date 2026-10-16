@@ -128,8 +128,23 @@ async function run() {
     r = await req('PUT', '/api/character', { cookie: c0, body: { name: '카이런', class: '전사', title: '빚쟁이 기사', bio: 'z'.repeat(5000) } });
     check('설정글 길이 상한 적용', r.data.character.bio.length === 2000);
     r = await req('PUT', '/api/character', { cookie: c0, body: { name: '카이런', class: '전사', title: '빚쟁이 기사', bio: xss, appearance: '붉은 머리' } });
-    r = await req('GET', '/api/characters/' + r.data.character.id, { cookie: c1 });
+    const r0id = r.data.character.id;
+    r = await req('GET', '/api/characters/' + r0id, { cookie: c1 });
     check('다른 유저 프로필 조회', r.status === 200 && r.data.character.bio === xss);
+    // 프로필 링크
+    const base = { name: '카이런', class: '전사', title: '빚쟁이 기사', bio: xss, appearance: '붉은 머리' };
+    r = await req('PUT', '/api/character', { cookie: c0, body: { ...base, link: 'https://docs.google.com/document/d/abc' } });
+    check('프로필 링크 저장', r.status === 200 && r.data.character.link === 'https://docs.google.com/document/d/abc', r.data);
+    r = await req('PUT', '/api/character', { cookie: c0, body: base });
+    check('링크 안 보내면 기존 링크 유지', r.data.character.link === 'https://docs.google.com/document/d/abc', r.data);
+    for (const bad of ['javascript:alert(1)', 'data:text/html,hi', 'ftp://x.com/a', 'docs.google.com', 'https://user:pw@evil.com/', 'https://a.com/' + 'x'.repeat(400)]) {
+      r = await req('PUT', '/api/character', { cookie: c0, body: { ...base, link: bad } });
+      check('잘못된 링크 거부: ' + bad.slice(0, 30), r.status === 400, r.data);
+    }
+    r = await req('GET', '/api/characters/' + r0id, { cookie: c1 });
+    check('다른 유저가 링크를 볼 수 있음', r.data.character.link === 'https://docs.google.com/document/d/abc', r.data);
+    r = await req('PUT', '/api/character', { cookie: c0, body: { ...base, link: '' } });
+    check('링크 비우기', r.status === 200 && r.data.character.link === '', r.data);
     r = await req('GET', '/api/characters', { cookie: c1 });
     check('명단 조회 (3명 이상)', r.data.characters.length >= 3);
 

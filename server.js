@@ -54,7 +54,7 @@ const RATE_MAX = Number(process.env.CHAT_RATE_MAX || 6);
 const SESSION_DAYS = 30;
 const AUTH_RATE_MAX = Number(process.env.AUTH_RATE_MAX || 15); // IP당 5분에 로그인/가입 시도 허용 횟수
 const CLASSES = Object.keys(RULES.classes);
-const LIMITS = { name: [2, 12], title: 40, bio: 2000, appearance: 500, chat: 500, threadTitle: 60, post: 280 };
+const LIMITS = { name: [2, 12], title: 40, bio: 2000, appearance: 500, link: 300, chat: 500, threadTitle: 60, post: 280 };
 const HISTORY_SIZE = 50;
 const THREAD_LIMIT_PER_HOUR = 3; // 일반 유저가 한 시간에 만들 수 있는 스레드 수
 // 라운드 시간: 환경변수가 있으면 그게 우선, 없으면 rules.round (밸런스 조정 시 갱신)
@@ -228,7 +228,7 @@ function publicChar(c) {
   if (!c) return null;
   return {
     id: c.id, userId: c.user_id, name: c.name, class: c.class, title: c.title,
-    bio: c.bio, appearance: c.appearance, image: c.image ? `/uploads/${c.image}` : '',
+    bio: c.bio, appearance: c.appearance, link: c.link || '', image: c.image ? `/uploads/${c.image}` : '',
     ...sheetWithGear(c),
   };
 }
@@ -251,6 +251,18 @@ function gameInfo() {
 }
 
 // ---- 입력 검증 ----
+// 프로필 링크: 비우면 '', http/https 주소만 허용 (javascript: 같은 건 거부)
+function cleanLink(v) {
+  if (v == null) return '';
+  if (typeof v !== 'string') return null;
+  const s = v.replace(STRIP_CHARS, '').trim();
+  if (!s) return '';
+  if (s.length > LIMITS.link) return null;
+  let u;
+  try { u = new URL(s); } catch { return null; }
+  if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password || !u.hostname) return null;
+  return u.href.length > LIMITS.link ? null : u.href;
+}
 function cleanText(v, max, { multiline = false } = {}) {
   if (typeof v !== 'string') return '';
   let s = v.replace(/\r\n/g, '\n');
@@ -345,15 +357,18 @@ app.put('/api/character', auth, (req, res) => {
   const cur = q.charByUser.get(req.user.id);
   if (cur && cur.class !== cls && runs.hasRun(req.user.id))
     return res.status(400).json({ error: '의뢰를 한 번이라도 시작한 뒤에는 클래스를 바꿀 수 없어요.' });
+  // link 를 안 보내면 기존 값 유지
+  const link = b.link === undefined ? (cur ? cur.link : '') : cleanLink(b.link);
+  if (link === null) return res.status(400).json({ error: '링크는 http:// 또는 https:// 로 시작하는 주소만 넣을 수 있어요.' });
   try {
     db.prepare(
-      'UPDATE characters SET name = ?, class = ?, title = ?, bio = ?, appearance = ?, updated_at = ? WHERE user_id = ?'
+      'UPDATE characters SET name = ?, class = ?, title = ?, bio = ?, appearance = ?, link = ?, updated_at = ? WHERE user_id = ?'
     ).run(
       b.name.trim(), cls,
       cleanText(b.title, LIMITS.title),
       cleanText(b.bio, LIMITS.bio, { multiline: true }),
       cleanText(b.appearance, LIMITS.appearance, { multiline: true }),
-      now(), req.user.id
+      link, now(), req.user.id
     );
   } catch (e) {
     if (String(e.message).includes('idx_char_name') || String(e.message).includes('characters.name'))

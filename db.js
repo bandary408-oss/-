@@ -143,6 +143,7 @@ addColumn('characters', 'level', 'INTEGER NOT NULL DEFAULT 1');
 addColumn('characters', 'xp', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('characters', 'stat_points', 'INTEGER NOT NULL DEFAULT 0');
 for (const s of ['str', 'dex', 'int', 'cha']) addColumn('characters', 'a_' + s, 'INTEGER NOT NULL DEFAULT 0');
+addColumn('characters', 'link', "TEXT NOT NULL DEFAULT ''");   // 프로필 링크 (http/https 만, 선택)
 addColumn('users', 'is_system', 'INTEGER NOT NULL DEFAULT 0');
 
 db.exec(`

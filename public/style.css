@@ -169,6 +169,8 @@ textarea { resize: vertical; min-height: 84px; }
 .profile .head { display: flex; gap: 14px; align-items: center; }
 .profile .pname { font-family: var(--serif); font-size: 20px; font-weight: 700; }
 .profile .ptitle { color: var(--muted); font-size: 13px; }
+.profile .plink { display: inline-block; margin-top: 4px; font-size: 13px; color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }
+.profile .plink:hover { text-decoration: underline; }
 .badge { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--panel-2); border: 1px solid var(--line); color: var(--accent); margin-top: 4px; }
 .profile .section-title { font-size: 12px; color: var(--accent); font-family: var(--serif); margin-bottom: 4px; }
 .profile .text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }

@@ -825,6 +825,15 @@
   }
 
   // ---------- 프로필 ----------
+  // 프로필 링크: http/https 만 새 탭으로. 어디로 가는지 알 수 있게 도메인을 같이 보여줌
+  function profileLink(url) {
+    let u;
+    try { u = new URL(url); } catch { return null; }
+    if (!['http:', 'https:'].includes(u.protocol)) return null;
+    return h('a', { class: 'plink', href: u.href, target: '_blank', rel: 'noopener noreferrer', title: u.href },
+      '🔗 ', u.hostname.replace(/^www\./, ''), ' ↗');
+  }
+
   function showProfile(charId) {
     if (state.character && charId === state.character.id) return showMyProfile();
     api('/api/characters/' + charId).then(({ character: c }) => {
@@ -841,7 +850,8 @@
             h('div', { class: 'pname' }, c.name),
             c.title ? h('div', { class: 'ptitle' }, c.title) : null,
             c.class ? h('span', { class: 'badge' }, c.class) : null,
-            h('div', { class: 'muted' }, c.online ? '● 접속 중' : '○ 오프라인'))),
+            h('div', { class: 'muted' }, c.online ? '● 접속 중' : '○ 오프라인'),
+            c.link ? profileLink(c.link) : null)),
         sheetView(c, false),
         equipmentView(c),
         section('외형', c.appearance),
@@ -867,6 +877,7 @@
     const appearance = h('textarea', { maxlength: L.appearance, placeholder: '머리색, 체격, 눈에 띄는 특징…' }, c.appearance);
     const bio = h('textarea', { maxlength: L.bio, rows: 6, placeholder: '과거, 성격, 용병단에 오게 된 사연…' }, c.bio);
     const bioCount = h('div', { class: 'count' }, `${c.bio.length} / ${L.bio}`);
+    const link = h('input', { type: 'url', value: c.link || '', maxlength: L.link, placeholder: 'https://docs.google.com/… (비워도 돼요)' });
     bio.addEventListener('input', () => { bioCount.textContent = `${bio.value.length} / ${L.bio}`; });
 
     const imgHolder = h('div', {}, avatar(c.image, c.name, 'lg'));
@@ -908,6 +919,7 @@
       h('label', {}, '한 줄 소개', title),
       h('label', {}, '외형', appearance),
       h('label', {}, '설정', bio, bioCount),
+      h('label', {}, '링크 (선택)', link, h('small', {}, '구글 문서, 에버노트 등 설정 자료 주소. 다른 단원이 프로필에서 눌러 볼 수 있어요.')),
       h('button', { class: 'btn primary', type: 'submit' }, '프로필 저장'));
 
     form.addEventListener('submit', async (e) => {
@@ -915,7 +927,7 @@
       try {
         const r = await api('/api/character', {
           method: 'PUT',
-          body: { name: name.value, class: cls.value, title: title.value, appearance: appearance.value, bio: bio.value },
+          body: { name: name.value, class: cls.value, title: title.value, appearance: appearance.value, bio: bio.value, link: link.value },
         });
         state.character = r.character;
         renderSheetBox();
@@ -925,7 +937,9 @@
     });
 
     view.append(
-      h('div', { class: 'section-title', style: 'padding:12px 14px 0;color:var(--accent);font-family:var(--serif);font-weight:700' }, '내 프로필'),
+      h('div', { style: 'display:flex;align-items:center;gap:8px;padding:12px 14px 0' },
+        h('div', { class: 'section-title', style: 'color:var(--accent);font-family:var(--serif);font-weight:700' }, '내 프로필'),
+        h('button', { class: 'btn small ghost mobile-only', type: 'button', style: 'margin-left:auto', onclick: () => setTab('people') }, '👥 다른 단원 보기')),
       h('div', { id: 'sheetBox', style: 'padding:10px 14px 0' }),
       h('div', { id: 'invBox', style: 'padding:10px 14px 0' }),
       form,
