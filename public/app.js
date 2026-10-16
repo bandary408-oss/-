@@ -1408,6 +1408,7 @@
         if (!r) return;
         const x = r.result;
         state.townResult = x.nothing ? `🍂 ${s.name}: ${x.text}` : `🧺 ${s.name}: ${itemDef(x.item).name}${x.qty > 1 ? ` ×${x.qty}` : ''} 획득! (${rarityLabel(x.item)})${x.lucky ? ' 🍀 운세 덕분에 2배!' : ''}`;
+        toast(state.townResult); // 아래쪽 장소를 눌렀을 때 결과 칸이 화면 밖이어도 보이게
         renderTown();
       } }, '채집'))));
   }
@@ -1429,6 +1430,7 @@
           const x = r.result, ro = x.roll;
           const head = `🎲 d20(${ro.nat})${ro.bonus >= 0 ? '+' : ''}${ro.bonus}=${ro.total} vs ${ro.dc}`;
           state.townResult = ro.success ? `${head}\n🔨 ${ro.crit ? '대성공! ' : '성공! '}${itemDef(x.output).name} ×${x.qty} 완성` : `${head}\n💥 ${ro.fumble ? '대실패… 재료 절반이 못쓰게 됐다.' : '실패… 수수료만 날렸다.'}`;
+          toast(state.townResult.replace('\n', ' '));
           renderTown();
         } }, '제작')));
     });
@@ -1483,6 +1485,7 @@
       if (wasPending && st.mine.last && st.mine.last.id === wasPending.id) {
         const x = st.mine.last;
         state.townResult = x.gold !== undefined ? `🏺 ${x.jarName}: 골드 ${x.gold}G!` : `🏺 ${x.jarName}: ${itemDef(x.item).name}${x.qty > 1 ? ` ×${x.qty}` : ''}! (${rarityLabel(x.item)})`;
+        toast(state.townResult);
         loadInv();
       }
       renderTown();
